@@ -1,0 +1,14 @@
+/target
+/lib
+/classes
+/checkouts
+pom.xml
+pom.xml.asc
+*.jar
+*.class
+/.lein-*
+/.nrepl-port
+/resources/config/config_testing.edn
+/resources/config/config_*.edn
+/resources/mail/*
+/tmp

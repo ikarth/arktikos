@@ -1,0 +1,5 @@
+{:gmail-username "you@gmail.com"
+ :gmail-password "yourpassword"
+ :redactions {"you@gmail.com" "moderator"
+              "other@player.com" "Other Player"}
+ }

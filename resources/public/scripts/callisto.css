@@ -1,0 +1,32 @@
+.node {
+  stroke: #ffffff;
+  stroke-width: 1.5px;
+}
+.link {
+  stroke: #555555;
+  stroke-opacity: 0.5;
+}
+.message-cell:hover {
+  fill: #003300;
+}
+.message-cell:active {
+  stroke: #000000;
+  stroke-width: 3px;
+  fill: #000000;
+}
+#area-chart {
+  border:solid;
+  border-color: #a5a5a5;
+  border-width: 1px;
+  width: 860px;
+  height:350px;
+  background-color:#efefef;
+}
+.d3-tip {
+  background-color:#3f3f3f;
+  padding:3px;
+  border-radius:6px;
+  text-align:center;
+  color:#deded0;
+  font-size:0.8em;
+}
