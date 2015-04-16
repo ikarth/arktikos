@@ -5,20 +5,16 @@
             [nomad :refer [defconfig]]
             [clojure.java.io :as io]
             [clojure.string]
+            [clojure.pprint]
             )
   (:import (javax.mail Message)
            (javax.mail.internet MimeMessage))
    )
 
-;(def inbox-messages (inbox mystore))
-;(clojure-mail.core/open-folder mystore :inbox :readonly)
-;(folder/list (clojure-mail.core/open-folder mystore :inbox :readonly)
-;             )
 
-;(get-folder mystore "Callisto")
-;(open-folder mystore :all)
-;(message/read-message (first (take 5 (clojure-mail.core/all-messages mystore :sent))))
-;(clojure-mail.core/open-folder mystore "[Gmail]/Callisto" :readonly)
+;;;
+;;; Configuration
+;;;
 
 (defconfig my-config (io/resource "config/config_testing.edn"))
 
@@ -30,6 +26,10 @@
          (map
           (fn [[k v]] {(re-pattern (clojure.string/lower-case k)) v})
           (get (my-config) :redactions))))
+
+;;;
+;;; Mail Data Formatting
+;;;
 
 (defn get-sent-date [msg]
   (.getSentDate msg))
@@ -69,13 +69,10 @@
 
 (defn strip-email [address]
   (clojure.string/lower-case
-  (let [rx (re-find #"<\S+>" address)]
-    (if rx
-      (subs rx (inc (.indexOf rx "<")) (.indexOf rx ">"))
-      address
-
-      )
-    )))
+   (let [rx (re-find #"<\S+>" address)]
+     (if rx
+       (subs rx (inc (.indexOf rx "<")) (.indexOf rx ">"))
+         address))))
 
 (defn redact-addresses [address redactions]
   (reduce #(apply clojure.string/replace %1 %2)
@@ -87,7 +84,7 @@
 
 
 (defn hash-message [m]
-  {:mail/id (message/id m)
+  {;:mail/id (message/id m)
    ;:mail/to (redact-addresses (strip-email (message/to m)) *redactions*)
    :mail/from (redact-addresses (strip-email (message/from m)) *redactions*)
    :mail/subject (message/subject m)
@@ -107,7 +104,6 @@
                          ;(moderator-name))
    ;:mail/read-message (message/read-message m)
    })
-
 
 (defn process-message [path-to-message]
   (let [m (try
@@ -132,26 +128,107 @@
   (group-by :mail/from msgs))
 
 
+;;;
+;;; Remote Mail
+;;;
+
+;(get {:x 1 :y 2} :x)
+
+(defn hash-message-remote [m]
+  {;:mail/id (message/id m)
+   ;:mail/to (strip-email (get m :to "X"))
+   :mail/from (redact-addresses (strip-email (message/from m)) *redactions*)
+   ;:mail/subject (message/subject m)
+   ;:mail/sender (redact-addresses (strip-email (message/sender m)) *redactions*)
+   ;:mail/cc (strip-emails (cc-list m))
+   ;:mail/bcc (strip-emails (bcc-list m))
+   ;:mail/date-sent (get-sent-date m)
+   ;:mail/date-received (get-recieved-date m)
+   ;:mail/flags (message/flags m)
+   ;:mail/mime-type (message/mime-type m)
+   ;:mail/content-type (message/content-type m)
+   ;:mail/text-body (get-text-body m)
+   ;:mail/html-body (get-html-body m)
+   ;:mail/reception-list ;(strip-moderator
+   ;                      (strip-emails
+   ;                       (flatten (conj (cc-list m) (message/to m))))
+   ;                      ;(moderator-name))
+   ;:mail/read-message (message/read-message m)
+   :m m
+   })
+
+
+;(def mystore (clojure-mail.core/gen-store gmail-username gmail-password))
+;(def inbox-messages (inbox mystore))
+
+;(clojure-mail.core/open-folder mystore :inbox :readonly)
+;(folder/list (clojure-mail.core/open-folder mystore :inbox :readonly)
+;             )
+
+;(get-folder mystore "Callisto")
+;(open-folder mystore :all)
+;(message/read-message
+; (first (take 5 (clojure-mail.core/all-messages
+;                 (clojure-mail.core/gen-store gmail-username gmail-password) :sent)))
+;                 )
 
 
 
+;(clojure-mail.core/open-folder mystore "[Gmail]/Callisto" :readonly)
 
 
+(defn process-remote-message [m]
+  (hash-message m))
+
+(defn remote-mail []
+  ;(clojure.pprint/pprint "accessing remote mail...")
+  (map process-remote-message
+       (take 450
+             ;(clojure-mail.core/all-messages
+             ; (clojure-mail.core/gen-store gmail-username gmail-password) :sent)
+
+             (clojure-mail.core/inbox
+              (clojure-mail.core/gen-store gmail-username gmail-password))
+             )))
 
 
+;(remote-mail)
 
 
+;(map #(count (second %))
+;  (transactions-sent
+; (ingest-mail "mail/Book One_20150404-0926/messages/"))
+;     )
+;(remove nil? (ingest-mail "mail/Book One_20150404-0926/messages/"
+;             ))
+
+;(defn hash-message [m]
+  ;(hash-message-remote (message/read-message m))
+  ;(message/read-message m)
+ ; (hash-message-remote m)
+ ; )
 
 
+;(defn strip-email [address]
+;  ;(clojure.string/lower-case
+;  ; (let [rx (re-find #"<\S+>" address)]
+;  ;   (if rx
+;  ;     (subs rx (inc (.indexOf rx "<")) (.indexOf rx ">"))
+;  ;       address)))
+;  address
+;  )
 
 
-(map #(count (second %))
-  (transactions-sent
- (ingest-mail "mail/Book One_20150404-0926/messages/"))
-     )
-(remove nil? (ingest-mail "mail/Book One_20150404-0926/messages/"
-             ))
+;(defn ingest-mail [mail-folder-path]
+;  (remove nil?
+;  (map process-message
+;       (take 2
+;     (map #(.getPath %1)
+;          (file-seq (io/file mail-folder-path)))
+;        ))))
 
 
+(ingest-mail "resources/mail/Book One_20150404-0926/messages/"
+             )
 
 

@@ -13,6 +13,20 @@
 
 (def root (str (System/getProperty "user.dir") "/public"))
 
+(def remote-mail-data (mail/remote-mail))
+
+(defn get-mail-data [source]
+  (cond
+        (= source :local)
+        (data/broadcast-mail
+               (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
+               )
+        (= source :remote)
+        (data/broadcast-mail
+               remote-mail-data
+               )))
+
+
 
 (defroutes app-routes
   (GET "/" []
@@ -20,9 +34,7 @@
   (GET "/data" []
        {:status 200
         :headers {"Content-Type" "application/json"}
-        :body (data/broadcast-mail
-               (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
-               )})
+        :body (get-mail-data :remote)})
   (route/files "public")
   ;(route/files "/" (do (println root) {:root root}))
   (route/resources "/")

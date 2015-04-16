@@ -162,7 +162,7 @@
 (defn broadcast-mail [msgs]
   (json/encode
    (encode-mail msgs)
-   {:pretty true :escape-non-ascii true :date-format "yyyy-MM-dd"}))
+   {:pretty true :escape-non-ascii true :date-format "yyyy-MM-dd-HH-mm-ss"}))
 
 ;(encode-mail (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
 ;      )
