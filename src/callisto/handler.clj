@@ -18,9 +18,11 @@
   (GET "/" []
        (front/frontend))
   (GET "/data" []
-       (data/broadcast-mail
-        (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
-        ))
+       {:status 200
+        :headers {"Content-Type" "application/json"}
+        :body (data/broadcast-mail
+               (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
+               )})
   (route/files "public")
   ;(route/files "/" (do (println root) {:root root}))
   (route/resources "/")

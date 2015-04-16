@@ -28,6 +28,12 @@
 ;       (clj-time.format/parse (:mail/date-sent %1)))
 ;   msgs))
 
+(defn subset-mail-by-date [msgs date]
+  (let [date (clj-time.format/parse date)]
+    (filter
+     #()
+     msgs)))
+
 ;;;
 ;;; Nodes and Edges
 ;;;
