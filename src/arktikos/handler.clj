@@ -1,11 +1,11 @@
-(ns callisto.handler
+(ns arktikos.handler
   (:require [compojure.core :refer :all]
             [compojure.route :as route]
             [ring.middleware.defaults :refer [wrap-defaults site-defaults]]
             ;[ring.middleware.json :as middleware]
-            [callisto.mail :as mail]
-            [callisto.data :as data]
-            [callisto.front :as front]
+            [arktikos.mail :as mail]
+            [arktikos.data :as data]
+            [arktikos.front :as front]
             ;[ring.middleware.cors :refer [wrap-cors]]
             ;[hiccup.core :as hiccup]
             ;[clj-time.core :as time]

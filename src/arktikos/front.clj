@@ -1,4 +1,4 @@
-(ns callisto.front
+(ns arktikos.front
   (:require [hiccup.core :as hiccup]
             [hickory.core]
             ))

@@ -1,4 +1,4 @@
-(ns callisto.mail
+(ns arktikos.mail
   (:require [clojure-mail.core :as clj-mail]
             [clojure-mail.message :as message]
             [clojure-mail.folder :as folder]

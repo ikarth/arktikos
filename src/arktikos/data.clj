@@ -1,7 +1,7 @@
-(ns callisto.data
+(ns arktikos.data
   (:require [clojure.java.io :as io]
             [cheshire.core :as json]
-            [callisto.mail :as mail]
+            [arktikos.mail :as mail]
             [clj-time.core :as time]
             [clj-time.format]
             [clj-time.coerce]
