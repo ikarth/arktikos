@@ -31,10 +31,14 @@
 (defroutes app-routes
   (GET "/" []
        (front/frontend))
-  (GET "/data" []
+  (GET "/data/remote" []
        {:status 200
         :headers {"Content-Type" "application/json"}
         :body (get-mail-data :remote)})
+  (GET "/data" []
+       {:status 200
+        :headers {"Content-Type" "application/json"}
+        :body (get-mail-data :local)})
   (route/files "public")
   ;(route/files "/" (do (println root) {:root root}))
   (route/resources "/")
