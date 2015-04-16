@@ -27,23 +27,7 @@ function drawTimeChart() {
 
   timechart.call(tip);
 
-  //var bar = svg.selectAll("g").data(static_data)
-  //    .enter().append("g")
-  //    .attr("transform", function(d, i)
-  //         { return "translate(0," + i * barHeight + ")"; });
-
-  //bar.append("rect")
-  //    .attr("width", x)
-  //    .attr("height", barHeight - 1);
-
-  //bar.append("text")
-  //    .attr("x", function(d) { return x(d) - 3; })
-  //    .attr("y", barHeight / 2)
-  //    .attr("dy", ".35em")
-  //    .text(function(d) { return d; });
-
   d3.json(dataSource, function(error, data) {
-    //console.log(data);
 
     data.data.forEach(function(d) {
       d.date = parseDate(d.date);
@@ -77,38 +61,21 @@ function drawTimeChart() {
     var timeExtent = d3.extent(data.data, function(d) { return d3.time.day(d.date); });
     timeExtent[1].setDate(timeExtent[1].getDate() + 1);
 
-    //x = d3.time.scale().domain([firstDate, lastDate]).range([0,width]);
-    //x.domain = d3.extent(data.data, function(d) { return d.date; })
     x = d3.time.scale()
-    //.domain(d3.extent(data.data, function(d) { return d.date; }))
     .domain(timeExtent)
     .range([0,width]);
 
-    //console.log(d3.extent(data.data, function(d) { return d.date; }));
-    //console.log(x(data.data[0].date));
-    //console.log(x(data.data[data.data.length - 1].date));
-    //y.domain([0, d3.max(data.data, function(d) {return d.value; })]);
     y.domain([0, 10]);
 
-    //var buckets = d3.time.days(x.domain()[0], new Date().setDate(x.domain()[1].getDate + 1) );
     var lastDatePlusOne = new Date(x.domain()[1]);
     lastDatePlusOne.setDate(lastDatePlusOne.getDate());
     var buckets = d3.time.days(x.domain()[0], lastDatePlusOne);
     var cellWidth = d3.scale.ordinal().domain(buckets).rangeRoundBands(x.range(), 0.0).rangeBand();
 
-    console.log(timeExtent);
-    console.log(timeExtent[1]);
-    console.log(width);
-    console.log(buckets);
-    console.log(buckets.length);
-    console.log(cellWidth);
-
     var cellHeight = 20;
 
     var cell = timechart.selectAll("g")
     .data(data.data).enter().append("g");
-
-    //console.log(data.data);
 
     cell.append("rect")
     .attr("x", function(d) { return x(d3.time.day(d.date)); })
@@ -121,30 +88,11 @@ function drawTimeChart() {
     .on("mouseout", tip.hide)
     ;
 
-
-
-    //svg.append("text")
-    //    .attr("x", barWidth / 2)
-    //    .attr("y", function(d) { return y(d.value) + 3; })
-    //    .attr("dy", ".75em")
-    //    .text(function(d) { return d.value; });
-
-
-    //data.data.forEach(function(d) {
-    //
-    //});
-    //svg.append("g")
-    //    svg.selectAll("g")
-    //        .data(data.data)
-    //        .enter().append("g")
-    //        ;
-
-
   });
 }
 
 function drawNodeGraph() {
-  var width = 1260, height = 900;
+  var width = 860, height = 500;
   var color = d3.scale.category20();
   var force = d3.layout.force()
     .charge(-240)
@@ -190,9 +138,9 @@ function drawNodeGraph() {
     .attr("class", "node")
     .attr("r", 7)
     .style("fill", function(d) { return color(d.index); })
-    //.on("click", function (d) {
-    //    d.fixed = true;
-    //})
+    .on("click", function (d) {
+        d.fixed = true;
+    })
     .call(d3cola.drag)
     .on("mouseover", nodeTip.show)
     .on("mouseout", nodeTip.hide)
@@ -214,18 +162,90 @@ function drawNodeGraph() {
 
 
   d3.select("p").text("Replace");
-  //var sampleSVG = d3.select("#viz")
-  //.append("svg:svg")
-  //.attr("width", 100)
-  //.attr("height", 100);
+}
 
-  //sampleSVG.append("svg:circle")
-  //    .style("stroke", "black")
-  //    .style("fill", "white")
-  //    .attr("r", 40)
-  //    .attr("cx", 50)
-  //    .attr("cy", 50);
-  //var vis = d3.select("#graph").append("svg");
-  //var w = 900, h = 400;
-  //vis.text("Our Graph").select("#graph");
+function drawNodeGraphWithCurves() {
+  var width = 860, height = 500;
+  var color = d3.scale.category20();
+  var force = d3.layout.force()
+    .charge(-70)
+    .linkDistance(15)
+    .size([width, height]);
+
+  var nodeTip = d3.tip().attr("class", "d3-tip")
+                  .html(function(d) {
+                    return d.name;
+                  });
+
+  var d3cola = cola.d3adaptor()
+    .linkDistance(30)
+    .avoidOverlaps(true)
+    .symmetricDiffLinkLengths(5)
+    .size([width,height]);
+
+  var nodeGraph = d3.select("body").append("svg")
+  .attr("width", width)
+  .attr("height", height)
+  .attr("class","nodegraph");
+
+  nodeGraph.call(nodeTip);
+
+
+  d3.json(dataSource,
+          function(error, graph) {
+
+    var nodes = graph.nodes.slice();
+    var links = [];
+    var bilinks = [];
+    graph.links.forEach(function(l) {
+      var s = nodes[l.source];
+      var t = nodes[l.target];
+      var i = {};
+      nodes.push(i);
+      links.push({source: s, target: i}, {source: i, target: t});
+      bilinks.push([s, i, t]);
+    });
+
+    d3cola
+    .nodes(nodes)
+    .links(links)
+    .start();
+
+    var link = nodeGraph.selectAll(".link")
+    .data(bilinks)
+    .enter().append("path")
+    .attr("class", "link")
+    .style("stroke-width",
+           function(d) { return Math.sqrt(d.value); });
+
+    var node = nodeGraph.selectAll(".node")
+    .data(graph.nodes)
+    .enter().append("circle")
+    .attr("class", "node")
+    .attr("r", 7)
+    .style("fill", function(d) { return color(d.index); })
+    //.on("click", function (d) {
+    //    d.fixed = true;
+    //})
+    .call(d3cola.drag)
+    .on("mouseover", nodeTip.show)
+    .on("mouseout", nodeTip.hide)
+    ;
+
+    //node.append("title")
+    //    .text(function(d) { return d.name; });
+
+    d3cola.on("tick", function() {
+       node.attr("cx", function(d) { return d.x; })
+      .attr("cy", function(d) { return d.y; });
+      link.attr("d", function(d) {
+      return "M " + d[0].x + "," + d[0].y
+           + "S " + d[1].x + "," + d[1].y
+           +  " " + d[2].x + "," + d[2].y;
+      });
+    });
+  });
+
+
+  d3.select("p").text("Replace");
 }

@@ -5,6 +5,8 @@
 .link {
   stroke: #555555;
   stroke-opacity: 0.5;
+  /*stroke-width: 1.5px;*/
+  fill: none;
 }
 .message-cell:hover {
   fill: #003300;
