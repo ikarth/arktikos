@@ -244,7 +244,6 @@ function drawNodeGraph() {
       });
     };
 
-
     force
     .nodes(nodes)
     .links(links)
@@ -254,6 +253,7 @@ function drawNodeGraph() {
     .data(links)
     .enter().append("line")
     .attr("class", "link")
+    .style("stroke", function(d) { return color(d.source.index); })
     .style("stroke-width",
            function(d) { return Math.sqrt(d.value); });
 
@@ -306,9 +306,9 @@ function drawNodeGraphWithCurves() {
                   });
 
   var d3cola = cola.d3adaptor()
-    .linkDistance(30)
+    .linkDistance(60)
     .avoidOverlaps(true)
-    .symmetricDiffLinkLengths(5)
+    .symmetricDiffLinkLengths(15)
     .size([width,height]);
 
   var nodeGraph = d3.select("body").append("svg")
@@ -328,11 +328,13 @@ function drawNodeGraphWithCurves() {
     graph.links.forEach(function(l) {
       var s = nodes[l.source];
       var t = nodes[l.target];
-      var i = {};
+      var i = {index: s.index};
       nodes.push(i);
       links.push({source: s, target: i}, {source: i, target: t});
-      bilinks.push([s, i, t]);
+      bilinks.push({path: [s, i, t], value: l.value});
     });
+
+    //console.log(bilinks);
 
     d3cola
     .nodes(nodes)
@@ -343,8 +345,10 @@ function drawNodeGraphWithCurves() {
     .data(bilinks)
     .enter().append("path")
     .attr("class", "link")
+    .style("stroke", function(d) { return color(d.path[0].index); })
     .style("stroke-width",
-           function(d) { return Math.sqrt(d.value); });
+           function(d) { return Math.sqrt(d.value); })
+    ;
 
     var node = nodeGraph.selectAll(".node")
     .data(graph.nodes)
@@ -367,9 +371,9 @@ function drawNodeGraphWithCurves() {
        node.attr("cx", function(d) { return d.x; })
       .attr("cy", function(d) { return d.y; });
       link.attr("d", function(d) {
-      return "M " + d[0].x + "," + d[0].y
-           + "S " + d[1].x + "," + d[1].y
-           +  " " + d[2].x + "," + d[2].y;
+      return "M " + d.path[0].x + "," + d.path[0].y
+           + "S " + d.path[1].x + "," + d.path[1].y
+           +  " " + d.path[2].x + "," + d.path[2].y;
       });
     });
   });
