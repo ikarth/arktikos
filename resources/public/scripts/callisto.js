@@ -1,5 +1,12 @@
-var dataSource = "http://localhost:3000/data";
+//var dataSource = "/data";
+var dataSource = "/data/remote";
 //var dataSource =  "test.json";
+
+console.log("Starting...");
+
+var tickCount = 0;
+
+var hideModerator = false;
 
 function drawTimeChart() {
   var tip = d3.tip().attr("class", "d3-tip")
@@ -72,7 +79,7 @@ function drawTimeChart() {
     var buckets = d3.time.days(x.domain()[0], lastDatePlusOne);
     var cellWidth = d3.scale.ordinal().domain(buckets).rangeRoundBands(x.range(), 0.0).rangeBand();
 
-    var cellHeight = 20;
+    var cellHeight = 10;
 
     var cell = timechart.selectAll("g")
     .data(data.data).enter().append("g");
@@ -82,11 +89,10 @@ function drawTimeChart() {
     .attr("y", function(d) {return height - (d.order * cellHeight);})
     .attr("height", cellHeight)
     .attr("width", cellWidth)
-    .attr("class", "message-cell")
+    .attr("class", function(d) { return d.from + " message-cell"; })
     .style("fill", function(d){return d.color;})
     .on("mouseover", tip.show)
-    .on("mouseout", tip.hide)
-    ;
+    .on("mouseout", tip.hide);
 
   });
 }
@@ -94,9 +100,10 @@ function drawTimeChart() {
 function drawNodeGraph() {
   var width = 860, height = 500;
   var color = d3.scale.category20();
-  var force = d3.layout.force()
-    .charge(-240)
-    .linkDistance(60)
+
+  var d3force = d3.layout.force()
+    .charge(-280)
+    .linkDistance(80)
     .size([width, height]);
 
   var nodeTip = d3.tip().attr("class", "d3-tip")
@@ -105,10 +112,14 @@ function drawNodeGraph() {
                   });
 
   var d3cola = cola.d3adaptor()
-    .linkDistance(40)
+    .linkDistance(50)
     .avoidOverlaps(true)
-    .symmetricDiffLinkLengths(10)
+    .symmetricDiffLinkLengths(25)
+    //.jaccardLinkLengths(40,0.7)
     .size([width,height]);
+
+  var force = d3cola;
+  //var force = d3force;
 
   var nodeGraph = d3.select("body").append("svg")
   .attr("width", width)
@@ -120,28 +131,42 @@ function drawNodeGraph() {
 
   d3.json(dataSource,
           function(error, graph) {
-    d3cola
-    .nodes(graph.nodes)
-    .links(graph.links)
-    .start(10,15,20);
+
+    var nodes = graph.nodes;
+    var links = graph.links;
+
+    // TODO: generalize to all players
+    if(hideModerator) {
+      var moderatorIndex = nodes.filter(function(d) { return d.name == "Moderator"; })[0].index;
+      //nodes = nodes.filter(function(d) { return d.name != "Moderator"; });
+      links = links.filter(function(d) {
+        return ((d.source != moderatorIndex) && (d.target != moderatorIndex));
+      });
+    };
+
+
+    force
+    .nodes(nodes)
+    .links(links)
+    .start();
 
     var link = nodeGraph.selectAll(".link")
-    .data(graph.links)
+    .data(links)
     .enter().append("line")
     .attr("class", "link")
     .style("stroke-width",
            function(d) { return Math.sqrt(d.value); });
 
     var node = nodeGraph.selectAll(".node")
-    .data(graph.nodes)
+    .data(nodes)
     .enter().append("circle")
-    .attr("class", "node")
+    .attr("class", function(d) { return "node " + d.name; })
     .attr("r", 7)
     .style("fill", function(d) { return color(d.index); })
-    .on("click", function (d) {
-        d.fixed = true;
-    })
-    .call(d3cola.drag)
+    //.on("click", function (d) {
+    //    d.fixed = true;
+    //})
+    .call(force.drag)
     .on("mouseover", nodeTip.show)
     .on("mouseout", nodeTip.hide)
     ;
@@ -149,7 +174,10 @@ function drawNodeGraph() {
     //node.append("title")
     //    .text(function(d) { return d.name; });
 
-    d3cola.on("tick", function() {
+    force.on("tick", function() {
+      //console.log("tick " + tickCount);
+      //tickCount++;
+
       link.attr("x1", function(d) { return d.source.x; })
       .attr("y1", function(d) { return d.source.y; })
       .attr("x2", function(d) { return d.target.x; })
