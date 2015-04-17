@@ -16,7 +16,7 @@ function drawTimeChart() {
     return d.from + "<br>" + d.subject + "<br>" + d.date;
   });
 
-  var width = 860, height = 500;
+  var width = 860, height = 350;
 
   var parseDate = d3.time.format("%Y-%m-%d-%H-%M-%S").parse,
       formatPercent = d3.format(".0%");
@@ -24,9 +24,6 @@ function drawTimeChart() {
 
   var x = d3.time.scale().range([0,width]);
   var y = d3.scale.linear().range([height,0]);
-
-
-
 
   var timechart = d3.select("body").append("svg")
   .attr("width", width+20)
@@ -75,6 +72,7 @@ function drawTimeChart() {
     var firstDate = data.data[0].date;
     var lastDate = data.data[data.data.length - 1].date;
     var curDate = d3.time.day(firstDate);
+    var maxOrder = 0;
     var orderInc = 0;
     data.data.forEach(function(d, i) {
       if (d3.time.day(curDate) < d3.time.day(d.date)) {
@@ -83,6 +81,7 @@ function drawTimeChart() {
       }
       d.order = d.order + orderInc;
       orderInc = orderInc + 1;
+      maxOrder = Math.max(maxOrder, orderInc);
     });
 
 
@@ -93,14 +92,14 @@ function drawTimeChart() {
     .domain(timeExtent)
     .range([0,width]);
 
-    y.domain([0, 10]);
+    y.domain([0, maxOrder]);
 
     var lastDatePlusOne = new Date(x.domain()[1]);
     lastDatePlusOne.setDate(lastDatePlusOne.getDate());
     var buckets = d3.time.days(x.domain()[0], lastDatePlusOne);
-    var cellWidth = d3.scale.ordinal().domain(buckets).rangeRoundBands(x.range(), 0.0).rangeBand();
+    var cellWidth = d3.scale.ordinal().domain(buckets).rangeRoundBands(x.range(), 0.05).rangeBand();
 
-    var cellHeight = 10;
+    var cellHeight = Math.max(5, height / Math.max(maxOrder, 1));
 
     var cell = timechart.selectAll("g")
     .data(data.data).enter().append("g");
@@ -181,7 +180,7 @@ function drawPlayerList() {
   .attr("class", "data-list");
 
   d3.json(dataSource, function(error, data) {
-    console.log(data.nodes);
+    //console.log(data.nodes);
 
     var playerEntry = playerList.selectAll("li")
       .data(data.nodes)
