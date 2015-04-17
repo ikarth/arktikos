@@ -44,7 +44,11 @@ function drawTimeChart() {
     });
 
     data.data.sort(function(a,b) {
-      var dateDiff = d3.time.day(a.date)-d3.time.day(b.date);
+      // Sort by user ID
+      //var dateDiff = d3.time.day(a.date)-d3.time.day(b.date);
+      // Sort by exact time sent
+      var dateDiff = a.date-b.date;
+
       if (dateDiff == 0) {
         dateDiff = a.senderId - b.senderId;
       }
