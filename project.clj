@@ -16,6 +16,8 @@
                  [hiccup "1.0.5"]
                  [hickory "0.5.4"]
                  [clj-time "0.9.0"]
+                 [org.clojure/core.memoize "0.5.6"]
+
                  ]
   :plugins [[lein-ring "0.8.13"]]
   :ring {:handler arktikos.handler/app}

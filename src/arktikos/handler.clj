@@ -13,7 +13,7 @@
 
 (def root (str (System/getProperty "user.dir") "/public"))
 
-(def remote-mail-data (mail/remote-mail))
+(def remote-mail-data (mail/cached-remote-mail))
 
 (defn get-mail-data [source]
   (cond

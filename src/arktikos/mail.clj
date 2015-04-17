@@ -6,15 +6,12 @@
             [clojure.java.io :as io]
             [clojure.string]
             [clojure.pprint]
-
-            )
+            [clojure.core.memoize])
   (:import [javax.mail.internet MimeMessage
                                  MimeMultipart
                                  InternetAddress]
            [javax.mail Message Folder Store]
-           )
-   )
-
+           ))
 
 ;;;
 ;;; Configuration
@@ -25,11 +22,14 @@
 (def gmail-username (get (my-config) :gmail-username))
 (def gmail-password (get (my-config) :gmail-password))
 
-(def redactions
+(defn get-new-redactions []
   (apply merge
          (map
           (fn [[k v]] {(re-pattern (clojure.string/lower-case k)) v})
           (get (my-config) :redactions))))
+
+;; Cache redactions, so we don't have to keep yanking them from the config files
+(def get-redactions (clojure.core.memoize/ttl get-new-redactions {} :ttl/threshold 10000))
 
 ;;;
 ;;; Mail Data Formatting
@@ -37,10 +37,13 @@
 
 (defn get-sent-date [msg]
   (.getSentDate msg))
+
 (defn get-recieved-date [msg]
   (.getReceivedDate msg))
+
 (defn cc-list [msg]
   (map str (.getRecipients msg javax.mail.Message$RecipientType/CC)))
+
 (defn bcc-list [msg]
   (map str (.getRecipients msg javax.mail.Message$RecipientType/BCC)))
 
@@ -49,50 +52,54 @@
       (clojure.string/split #"[;]")
       (first)
       (clojure.string/lower-case)))
+
 (defn is-content-type? [body requested-type]
   (= (simple-content-type (:content-type body))
      requested-type))
+
 (defn find-body-of-type [bodies type]
   (:body (first (filter #(is-content-type? %1 type) bodies))))
+
 (defn get-text-body [msg]
   (find-body-of-type (message/message-body msg) "text/plain"))
+
 (defn get-html-body [msg]
   (find-body-of-type (message/message-body msg) "text/html"))
 
-;(message/read-message
-; (clj-mail/file->message (.getPath (second (file-seq
-; (io/file "mail/Book One_20150404-0926/messages/")
-; )))))
-
-;(defn moderator-name []
-;  "isaackarth@gmail.com")
-
-;(defn strip-moderator [addresses mod-name]
-;  (remove #(= %1 mod-name) addresses)
-;     )
-
-(defn strip-email [address]
+(defn strip-email
+  "Email addresses are returned as targets (http://cr.yp.to/immhf/addrlist.html#target-list).
+  One possible format for a target is an optional phrase followed by the address in
+  angled brackets, like so: 'Name <name@gmail.com>'. Because the identifying phrases can
+  be inconsistant, this is annoying for our purposes, so this function strips those off
+  and returns the naked address."
+  [address]
   (clojure.string/lower-case
    (let [rx (re-find #"<\S+>" address)]
      (if rx
        (subs rx (inc (.indexOf rx "<")) (.indexOf rx ">"))
          address))))
 
-(defn redact-addresses [address redactions]
+(defn redact-addresses
+  "Replace the addresses with aliases (presumably from the config files)."
+  [address redactions]
   (reduce #(apply clojure.string/replace %1 %2)
           address
           redactions))
 
-(defn strip-emails [addresses]
-  (map #(redact-addresses (strip-email %1) *redactions*) addresses))
+(defn strip-emails
+  "Strip and redact a bunch of emails."
+  [addresses redactions]
+  (map #(redact-addresses (strip-email %1) redactions) addresses))
 
 
-(defn hash-message [m]
+(defn hash-message
+  "Take an email and convert it to the hashmap format the data processing understands."
+  [m]
   {;:mail/id (message/id m)
-   ;:mail/to (redact-addresses (strip-email (message/to m)) redactions)
-   :mail/from (redact-addresses (strip-email (message/from m)) redactions)
+   ;:mail/to (redact-addresses (strip-email (message/to m)) (get-redactions))
+   :mail/from (redact-addresses (strip-email (message/from m) ) (get-redactions))
    :mail/subject (message/subject m)
-   ;:mail/sender (redact-addresses (strip-email (message/sender m)) redactions)
+   ;:mail/sender (redact-addresses (strip-email (message/sender m)) (get-redactions))
    ;:mail/cc (strip-emails (cc-list m))
    ;:mail/bcc (strip-emails (bcc-list m))
    :mail/date-sent (get-sent-date m)
@@ -104,29 +111,30 @@
    ;:mail/html-body (get-html-body m)
    :mail/reception-list ;(strip-moderator
                          (strip-emails
-                          (flatten (conj (cc-list m) (message/to m))))
+                          (flatten (conj (cc-list m) (message/to m)))
+                          (get-redactions))
                          ;(moderator-name))
    ;:mail/read-message (message/read-message m)
    })
 
-(defn process-message [path-to-message]
+(defn process-message
+  "Take a path to a file containing a single email, convert it for data processing."
+  [path-to-message]
   (let [m (try
                   (clj-mail/file->message path-to-message)
                   (catch java.io.FileNotFoundException e))]
     (if (not (nil? m))
       (hash-message m))))
 
-;(nth (map process-message
-;     (map #(.getPath %1) (file-seq (io/file "mail/Book One_20150404-0926/messages/")))
-;     ) 2)
-
-(defn ingest-mail [mail-folder-path]
+(defn ingest-mail
+  "Get messages from disk, returning a format that the data processing understands.
+  Local complement to (remote-mail)."
+  [mail-folder-path]
   (remove nil?
   (map process-message
      (map #(.getPath %1)
           (file-seq (io/file mail-folder-path))))))
 
-;(ingest-mail "mail/Book One_20150404-0926/messages/")
 (defn transactions-sent [msgs]
 
   (group-by :mail/from msgs))
@@ -135,32 +143,6 @@
 ;;;
 ;;; Remote Mail
 ;;;
-
-;(get {:x 1 :y 2} :x)
-
-(defn hash-message-remote [m]
-  {;:mail/id (message/id m)
-   ;:mail/to (strip-email (get m :to "X"))
-   :mail/from (redact-addresses (strip-email (message/from m)) *redactions*)
-   ;:mail/subject (message/subject m)
-   ;:mail/sender (redact-addresses (strip-email (message/sender m)) *redactions*)
-   ;:mail/cc (strip-emails (cc-list m))
-   ;:mail/bcc (strip-emails (bcc-list m))
-   ;:mail/date-sent (get-sent-date m)
-   ;:mail/date-received (get-recieved-date m)
-   ;:mail/flags (message/flags m)
-   ;:mail/mime-type (message/mime-type m)
-   ;:mail/content-type (message/content-type m)
-   ;:mail/text-body (get-text-body m)
-   ;:mail/html-body (get-html-body m)
-   ;:mail/reception-list ;(strip-moderator
-   ;                      (strip-emails
-   ;                       (flatten (conj (cc-list m) (message/to m))))
-   ;                      ;(moderator-name))
-   ;:mail/read-message (message/read-message m)
-   :m m
-   })
-
 
 ;(def mystore (clojure-mail.core/gen-store gmail-username gmail-password))
 ;(def inbox-messages (inbox mystore))
@@ -175,11 +157,6 @@
 ; (first (take 5 (clojure-mail.core/all-messages
 ;                 (clojure-mail.core/gen-store gmail-username gmail-password) :sent)))
 ;                 )
-
-
-
-;(clojure-mail.core/open-folder mystore "[Gmail]/Callisto" :readonly)
-
 
 (defn process-remote-message [m]
   (hash-message m))
@@ -206,15 +183,30 @@
 ;              (clojure-mail.core/gen-store gmail-username gmail-password)
 ;              "Colony of Callisto"))))
 
-(defn remote-mail []
+(defn remote-mail
+  "Get mail from the remote server, return it for data processing.
+  Remote complement to (ingest-mail)."
+  []
   (clojure.pprint/pprint "accessing remote mail...")
   (map process-remote-message
-       ;(take 25
         (clojure-mail.core/with-store (clojure-mail.core/gen-store gmail-username gmail-password)
-         ;(clojure-mail.core/folders clojure-mail.core/*store*)
          (.getMessages (my-open-folder "Callisto/Colony/Letters/Missives" :readonly))
                   )))
 
+(defn remote-mail
+  "Get mail from the remote server, return it for data processing.
+  Remote complement to (ingest-mail)."
+  ([] (remote-mail "Callisto/Colony/Letters/Missives"))
+  ([folder-name]
+  (clojure.pprint/pprint (str "Accessing remote mail: " folder-name))
+  (map process-remote-message
+        (clojure-mail.core/with-store (clojure-mail.core/gen-store gmail-username gmail-password)
+         (.getMessages (my-open-folder folder-name :readonly))
+                  ))))
+
+;; Cache the fetched mail, because we really don't need real-time updates yet...
+(def cached-remote-mail
+  (clojure.core.memoize/ttl remote-mail {} :ttl/threshold 6000000))
 
 
 ;(remote-mail)
@@ -226,11 +218,22 @@
 ;  ))
 
 
-(clojure-mail.core/with-store (clojure-mail.core/gen-store gmail-username gmail-password)
-  ;(clojure-mail.core/folders clojure-mail.core/*store*)
-  (process-remote-message
-   (first (.getMessages (my-open-folder "Callisto/Colony/Letters/Missives" :readonly))
-          )))
+;(clojure-mail.core/with-store (clojure-mail.core/gen-store gmail-username gmail-password)
+;  ;(clojure-mail.core/folders clojure-mail.core/*store*)
+;  (process-remote-message
+;   (first (.getMessages (my-open-folder "Callisto/Colony/Letters/Missives" :readonly))
+;          )))
+
+
+
+
+
+
+
+
+
+
+
 
 ;(first (.getMessages
 ;(clojure-mail.core/open-folder
