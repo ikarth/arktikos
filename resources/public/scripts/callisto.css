@@ -32,3 +32,46 @@
   color:#deded0;
   font-size:0.8em;
 }
+
+ul.data-list a {
+  min-height: 2em;
+  min-width: 8em;
+  diplay: block;
+  overflow: visible;
+  width: 100%;
+  height: 100%;
+  /*background-color: #4444ff;*/
+}
+
+div.data-list {
+  max-width: 40em;
+  max-height: 800px;
+  display:inline-block;
+  overflow:hidden;
+  overflow-y: auto;
+  vertical-align:top;
+
+}
+
+ul.data-list {
+  padding:0px;
+  overflow: visible;
+}
+
+ul.data-list li {
+  margin:auto;
+  padding:auto;
+  overflow: visible;
+  min-height: 2em;
+  min-width: 15em;
+  diplay: block;
+  padding:0px;
+  list-style: none inside none;
+  text-align: center;
+  vertical-align:middle;
+}
+
+ul.data-list li:hover {
+  background-color: #4444ff;
+  color:#fdfdfd;
+}

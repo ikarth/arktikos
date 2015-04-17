@@ -8,6 +8,8 @@ var tickCount = 0;
 
 var hideModerator = false;
 
+var color = d3.scale.category20();
+
 function drawTimeChart() {
   var tip = d3.tip().attr("class", "d3-tip")
   .html(function(d) {
@@ -24,7 +26,6 @@ function drawTimeChart() {
   var y = d3.scale.linear().range([height,0]);
 
 
-  var color = d3.scale.category20();
 
 
   var timechart = d3.select("body").append("svg")
@@ -41,8 +42,23 @@ function drawTimeChart() {
       d.senderId = +d.senderId;
       d.color = color(d.senderId);
       d.order = 1;
+      d.indexNum = 0;
     });
 
+    data.data.sort(function(a,b) {
+      // Sort by exact time sent
+      var dateDiff = a.date-b.date;
+      return dateDiff;
+    });
+
+    // Give messages an index #
+    var msgOrderInc = 0;
+    data.data.forEach(function(d, i) {
+      d.indexNum = d.indexNum + msgOrderInc;
+      msgOrderInc = msgOrderInc + 1;
+    });
+
+    /*
     data.data.sort(function(a,b) {
       // Sort by user ID
       //var dateDiff = d3.time.day(a.date)-d3.time.day(b.date);
@@ -54,6 +70,7 @@ function drawTimeChart() {
       }
       return dateDiff;
     });
+    */
 
     var firstDate = data.data[0].date;
     var lastDate = data.data[data.data.length - 1].date;
@@ -101,9 +118,89 @@ function drawTimeChart() {
   });
 }
 
+function drawMessageList() {
+  var parseDate = d3.time.format("%Y-%m-%d-%H-%M-%S").parse,
+      formatPercent = d3.format(".0%");
+
+  //var color = d3.scale.category20();
+
+  var messageList = d3.select("body")
+    .append("div")
+    .attr("class", "data-list")
+    .append("ul")
+    .attr("class", "data-list");
+
+  d3.json(dataSource, function(error, data) {
+
+    data.data.forEach(function(d) {
+      d.date = parseDate(d.date);
+      d.senderId = +d.senderId;
+      d.color = color(d.senderId);
+      d.order = 1;
+      d.indexNum = 0;
+    });
+
+    data.data.sort(function(a,b) {
+      // Sort by exact time sent
+      var dateDiff = a.date-b.date;
+      return dateDiff;
+    });
+
+    // Give messages an index #
+    var msgOrderInc = 0;
+    data.data.forEach(function(d, i) {
+      d.indexNum = d.indexNum + msgOrderInc;
+      msgOrderInc = msgOrderInc + 1;
+    });
+
+
+    var messageEntry = messageList.selectAll("li")
+      .data(data.data)
+      .enter()
+      .append("li")
+      .attr("class", function(d) { return "message-listing " + d.from; })
+      .style("background-color", function(d) { return d.color; })
+      .html(function(d) {
+        return d.from + ": " + d.subject;
+      })
+
+    ;
+
+  });
+
+}
+
+function drawPlayerList() {
+  //var color = d3.scale.category20();
+
+
+  var playerList = d3.select("body")
+  .append("div")
+  .attr("class", "data-list")
+  .append("ul")
+  .attr("class", "data-list");
+
+  d3.json(dataSource, function(error, data) {
+    console.log(data.nodes);
+
+    var playerEntry = playerList.selectAll("li")
+      .data(data.nodes)
+      .enter()
+      .append("li")
+      .attr("class", function(d) { return "player-listing " + d.name; })
+      .style("background-color", function(d) { return color(d.index); })
+      .html(function(d) {
+        return d.name;
+      })
+
+    ;
+  });
+
+}
+
 function drawNodeGraph() {
   var width = 860, height = 500;
-  var color = d3.scale.category20();
+  //var color = d3.scale.category20();
 
   var d3force = d3.layout.force()
     .charge(-280)
@@ -198,7 +295,7 @@ function drawNodeGraph() {
 
 function drawNodeGraphWithCurves() {
   var width = 860, height = 500;
-  var color = d3.scale.category20();
+  //var color = d3.scale.category20();
   var force = d3.layout.force()
     .charge(-70)
     .linkDistance(15)
