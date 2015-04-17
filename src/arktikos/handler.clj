@@ -37,7 +37,7 @@
         :body (get-mail-data :remote)})
   (GET "/data" []
        {:status 200
-        :headers {"Content-Type" "application/json"}
+        :headers {"Content-Type" "application/json"} ; "Access-Control-Allow-Origin" "*"
         :body (get-mail-data :local)})
   (route/files "public")
   ;(route/files "/" (do (println root) {:root root}))

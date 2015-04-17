@@ -6,9 +6,13 @@
             [clojure.java.io :as io]
             [clojure.string]
             [clojure.pprint]
+
             )
-  (:import (javax.mail Message)
-           (javax.mail.internet MimeMessage))
+  (:import [javax.mail.internet MimeMessage
+                                 MimeMultipart
+                                 InternetAddress]
+           [javax.mail Message Folder Store]
+           )
    )
 
 
@@ -21,7 +25,7 @@
 (def gmail-username (get (my-config) :gmail-username))
 (def gmail-password (get (my-config) :gmail-password))
 
-(def ^:dynamic *redactions*
+(def redactions
   (apply merge
          (map
           (fn [[k v]] {(re-pattern (clojure.string/lower-case k)) v})
@@ -85,10 +89,10 @@
 
 (defn hash-message [m]
   {;:mail/id (message/id m)
-   ;:mail/to (redact-addresses (strip-email (message/to m)) *redactions*)
-   :mail/from (redact-addresses (strip-email (message/from m)) *redactions*)
+   ;:mail/to (redact-addresses (strip-email (message/to m)) redactions)
+   :mail/from (redact-addresses (strip-email (message/from m)) redactions)
    :mail/subject (message/subject m)
-   ;:mail/sender (redact-addresses (strip-email (message/sender m)) *redactions*)
+   ;:mail/sender (redact-addresses (strip-email (message/sender m)) redactions)
    ;:mail/cc (strip-emails (cc-list m))
    ;:mail/bcc (strip-emails (bcc-list m))
    :mail/date-sent (get-sent-date m)
@@ -180,19 +184,60 @@
 (defn process-remote-message [m]
   (hash-message m))
 
-(defn remote-mail []
-  ;(clojure.pprint/pprint "accessing remote mail...")
-  (map process-remote-message
-       (take 450
-             ;(clojure-mail.core/all-messages
-             ; (clojure-mail.core/gen-store gmail-username gmail-password) :sent)
+(defn my-open-folder
+  "Open a folder."
+  ([folder-name perm-level] (my-open-folder clojure-mail.core/*store* folder-name perm-level))
+  ([store folder-name perm-level]
+     (let [folder folder-name]
+       (let [root-folder (.getDefaultFolder store)
+             found-folder (clojure-mail.core/get-folder root-folder folder)]
+         (doto found-folder
+           (.open (get clojure-mail.core/folder-permissions perm-level)))))))
 
-             (clojure-mail.core/inbox
-              (clojure-mail.core/gen-store gmail-username gmail-password))
-             )))
+
+
+;(defn remote-mail []
+;  (clojure.pprint/pprint "accessing remote mail...")
+;  (map process-remote-message
+;       (take 25
+;             ;(clojure-mail.core/all-messages
+;             ; (clojure-mail.core/gen-store gmail-username gmail-password) :sent)
+;             (clojure-mail.core/search-inbox
+;              (clojure-mail.core/gen-store gmail-username gmail-password)
+;              "Colony of Callisto"))))
+
+(defn remote-mail []
+  (clojure.pprint/pprint "accessing remote mail...")
+  (map process-remote-message
+       ;(take 25
+        (clojure-mail.core/with-store (clojure-mail.core/gen-store gmail-username gmail-password)
+         ;(clojure-mail.core/folders clojure-mail.core/*store*)
+         (.getMessages (my-open-folder "Callisto/Colony/Letters/Missives" :readonly))
+                  )))
+
 
 
 ;(remote-mail)
+
+;(process-remote-message
+
+;(clojure-mail.core/with-store (clojure-mail.core/gen-store gmail-username gmail-password)
+; (.open (.getFolder clojure-mail.core/*store* "INBOX") Folder/READ_ONLY
+;  ))
+
+
+(clojure-mail.core/with-store (clojure-mail.core/gen-store gmail-username gmail-password)
+  ;(clojure-mail.core/folders clojure-mail.core/*store*)
+  (process-remote-message
+   (first (.getMessages (my-open-folder "Callisto/Colony/Letters/Missives" :readonly))
+          )))
+
+;(first (.getMessages
+;(clojure-mail.core/open-folder
+; (clojure-mail.core/gen-store gmail-username gmail-password)
+;         :all :readonly)))
+;(first downloaded-mail)
+ ;)
 
 
 ;(map #(count (second %))
@@ -228,7 +273,7 @@
 ;        ))))
 
 
-(ingest-mail "resources/mail/Book One_20150404-0926/messages/"
-             )
+;(ingest-mail "resources/mail/Book One_20150404-0926/messages/"
+;             )
 
 
