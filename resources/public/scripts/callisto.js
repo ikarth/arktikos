@@ -10,8 +10,220 @@ var hideModerator = false;
 
 var color = d3.scale.category20();
 
+var parseDate = d3.time.format("%Y-%m-%d-%H-%M-%S").parse,
+      formatPercent = d3.format(".0%");
+
 var currentlySelectedIndex =  -1;
 var currentlySelectedMessage =  -1;
+
+var playerState = [];
+var maxPlayerStates = 2;
+
+function setPlayerState() {
+
+}
+
+function togglePlayerState(index) {
+  playerState[index] = (playerState.index + 1) % maxPlayerStates;;
+}
+
+var focusArea = [0, 0];
+
+function setFocusArea(extent) {
+  focusArea = [extent[0], extent[1]];
+}
+
+setFocusArea(function() {
+  d3.json(dataSource, function(error, data) {
+    var sortedData = sortData(data.data);
+
+    var firstDate = sortedData[0].date;
+    var lastDate = sortedData[data.data.length - 1].date;
+    var curDate = d3.time.day(firstDate);
+    var maxOrder = 0;
+    var orderInc = 0;
+
+    var timeExtent = d3.extent(data.data, function(d) { return d3.time.day(d.date); });
+    timeExtent[1].setDate(timeExtent[1].getDate() + 1);
+
+    focusArea = [d3.time.day.floor(timeExtent[0]),
+            d3.time.day.ceil(timeExtent0[1])];
+  });
+});
+
+function sortData(sdata) {
+    sdata.forEach(function(d) {
+      d.date = parseDate(d.date);
+      d.senderId = +d.senderId;
+      d.color = color(d.senderId);
+      d.order = 1;
+      d.indexNum = 0;
+    });
+
+    sdata.sort(function(a,b) {
+      // Sort by exact time sent
+      var dateDiff = a.date-b.date;
+      return dateDiff;
+    });
+
+    // Give messages an index #
+    var msgOrderInc = 0;
+    sdata.forEach(function(d, i) {
+      d.indexNum = d.indexNum + msgOrderInc;
+      msgOrderInc = msgOrderInc + 1;
+    });
+
+    /*
+    sdata.sort(function(a,b) {
+      // Sort by user ID
+      //var dateDiff = d3.time.day(a.date)-d3.time.day(b.date);
+      // Sort by exact time sent
+      var dateDiff = a.date-b.date;
+
+      if (dateDiff == 0) {
+        dateDiff = a.senderId - b.senderId;
+      }
+      return dateDiff;
+    });
+    */
+
+  return sdata;
+}
+
+function filterData(data) {
+  data.filter(function(d) {
+    return ((d.date >= focusArea[0]) && (d.date <= focusArea[1]));
+  });
+  return data;
+}
+
+function drawTimeline() {
+  var width = 860, height = 15;
+
+  var x = d3.time.scale().range([0,width]);
+  var y = d3.scale.linear().range([height,0]);
+
+  var timechart = d3.select("body").append("svg")
+  .attr("width", width)
+  .attr("height", height)
+  .attr("class", "timeline");
+
+
+  d3.json(dataSource, function(error, data) {
+
+    var sortedData = sortData(data.data);
+
+    var firstDate = sortedData[0].date;
+    var lastDate = sortedData[data.data.length - 1].date;
+    var curDate = d3.time.day(firstDate);
+    var maxOrder = 0;
+    var orderInc = 0;
+
+    var timelineData = [];
+
+    sortedData.forEach(function(d, i) {
+      if (d3.time.day(curDate) < d3.time.day(d.date)) {
+        timelineData.push({value: orderInc, date: curDate});
+        orderInc = 0;
+        curDate = d3.time.day(d.date);
+      }
+      d.order = d.order + orderInc;
+      orderInc = orderInc + 1;
+      maxOrder = Math.max(maxOrder, orderInc);
+    });
+    timelineData.push({value: orderInc, date: curDate});
+
+    var timeExtent = d3.extent(data.data, function(d) { return d3.time.day(d.date); });
+    timeExtent[1].setDate(timeExtent[1].getDate() + 1);
+
+    x = d3.time.scale()
+    .domain(timeExtent)
+    .range([0,width]);
+
+    y.domain([0, maxOrder]);
+
+    var lastDatePlusOne = new Date(x.domain()[1]);
+    lastDatePlusOne.setDate(lastDatePlusOne.getDate());
+    var buckets = d3.time.days(x.domain()[0], lastDatePlusOne);
+    var cellWidth = d3.scale.ordinal().domain(buckets).rangeRoundBands(x.range(), 0.05).rangeBand();
+
+    var cellHeight = Math.max(0, height / Math.max(maxOrder, 1));
+
+    var brush = d3.svg.brush()
+    .x(x)
+    .extent([d3.time.day.floor(firstDate), d3.time.day.ceil(lastDate)])
+    .on("brush",brushed)
+    ;
+    console.log(firstDate);
+
+    var gBrush = timechart.append("g")
+    .attr("class", "brush")
+    .call(brush);
+
+    gBrush.selectAll("rect")
+      .attr("height", height);
+
+    var timeTick = timechart.selectAll("g")
+    .data(timelineData).enter().append("g");
+
+    timeTick.append("rect")
+    .attr("x", function(d) { return x(d3.time.day(d.date)); })
+    .attr("y", function(d) {return height - (d.value * cellHeight);})
+    .attr("height", function(d) {return d.value * cellHeight;})
+    .attr("width", cellWidth)
+    .style("fill", "#6677cc")
+    ;
+    /*
+    var cell = timechart.selectAll("g")
+    .data(data.data).enter().append("g");
+
+    cell.append("rect")
+    .attr("x", function(d) { return x(d3.time.day(d.date)); })
+    .attr("y", function(d) {return height - (d.order * cellHeight);})
+    .attr("height", cellHeight)
+    .attr("width", cellWidth)
+    .attr("class", function(d) { return d.from + " message-cell"; })
+    .style("fill", function(d){return d.color;})
+    .on("mouseover", tip.show)
+    .on("mouseout", tip.hide);
+    */
+
+    function brushed() {
+      var extent0 = brush.extent(),
+        extent1;
+
+      // if dragging, preserve the width of the extent
+      if (d3.event.mode === "move") {
+        var d0 = d3.time.day.round(extent0[0]),
+          d1 = d3.time.day.offset(d0, Math.round((extent0[1] - extent0[0]) / 864e5));
+        extent1 = [d0, d1];
+      }
+
+      // otherwise, if resizing, round both dates
+      else {
+        extent1 = extent0.map(d3.time.day.round);
+
+        // if empty when rounded, use floor & ceil instead
+        if (extent1[0] >= extent1[1]) {
+          extent1[0] = d3.time.day.floor(extent0[0]);
+          extent1[1] = d3.time.day.ceil(extent0[1]);
+        }
+      }
+
+      setFocusArea[extent1[0], extent1[1]];
+      d3.select(this).call(brush.extent(extent1));
+    }
+
+  });
+}
+
+function updateTimeChart() {
+  d3.json(dataSource, function(error, data) {
+
+    var sortedData = sortData(data.data);
+    sortedDate = filterData(sortedData);
+  }
+}
 
 function drawTimeChart() {
   var tip = d3.tip().attr("class", "d3-tip")
@@ -20,9 +232,6 @@ function drawTimeChart() {
   });
 
   var width = 860, height = 350;
-
-  var parseDate = d3.time.format("%Y-%m-%d-%H-%M-%S").parse,
-      formatPercent = d3.format(".0%");
 
   var x = d3.time.scale().range([0,width]);
   var y = d3.scale.linear().range([height,0]);
@@ -36,47 +245,15 @@ function drawTimeChart() {
 
   d3.json(dataSource, function(error, data) {
 
-    data.data.forEach(function(d) {
-      d.date = parseDate(d.date);
-      d.senderId = +d.senderId;
-      d.color = color(d.senderId);
-      d.order = 1;
-      d.indexNum = 0;
-    });
+    var sortedData = sortData(data.data);
+    sortedDate = filterData(sortedData);
 
-    data.data.sort(function(a,b) {
-      // Sort by exact time sent
-      var dateDiff = a.date-b.date;
-      return dateDiff;
-    });
-
-    // Give messages an index #
-    var msgOrderInc = 0;
-    data.data.forEach(function(d, i) {
-      d.indexNum = d.indexNum + msgOrderInc;
-      msgOrderInc = msgOrderInc + 1;
-    });
-
-    /*
-    data.data.sort(function(a,b) {
-      // Sort by user ID
-      //var dateDiff = d3.time.day(a.date)-d3.time.day(b.date);
-      // Sort by exact time sent
-      var dateDiff = a.date-b.date;
-
-      if (dateDiff == 0) {
-        dateDiff = a.senderId - b.senderId;
-      }
-      return dateDiff;
-    });
-    */
-
-    var firstDate = data.data[0].date;
-    var lastDate = data.data[data.data.length - 1].date;
+    var firstDate = sortedData[0].date;
+    var lastDate = sortedData[data.data.length - 1].date;
     var curDate = d3.time.day(firstDate);
     var maxOrder = 0;
     var orderInc = 0;
-    data.data.forEach(function(d, i) {
+    sortedData.forEach(function(d, i) {
       if (d3.time.day(curDate) < d3.time.day(d.date)) {
         orderInc = 0;
         curDate = d3.time.day(d.date);
@@ -87,7 +264,7 @@ function drawTimeChart() {
     });
 
 
-    var timeExtent = d3.extent(data.data, function(d) { return d3.time.day(d.date); });
+    var timeExtent = d3.extent(sortedData, function(d) { return d3.time.day(d.date); });
     timeExtent[1].setDate(timeExtent[1].getDate() + 1);
 
     x = d3.time.scale()
@@ -104,7 +281,7 @@ function drawTimeChart() {
     var cellHeight = Math.max(5, height / Math.max(maxOrder, 1));
 
     var cell = timechart.selectAll("g")
-    .data(data.data).enter().append("g");
+    .data(sortedData).enter().append("g");
 
     cell.append("rect")
     .attr("x", function(d) { return x(d3.time.day(d.date)); })
@@ -120,9 +297,6 @@ function drawTimeChart() {
 }
 
 function drawMessageList() {
-  var parseDate = d3.time.format("%Y-%m-%d-%H-%M-%S").parse,
-      formatPercent = d3.format(".0%");
-
   //var color = d3.scale.category20();
 
   var messageList = d3.select("body")
@@ -133,30 +307,12 @@ function drawMessageList() {
 
   d3.json(dataSource, function(error, data) {
 
-    data.data.forEach(function(d) {
-      d.date = parseDate(d.date);
-      d.senderId = +d.senderId;
-      d.color = color(d.senderId);
-      d.order = 1;
-      d.indexNum = 0;
-    });
+    var sortedData = sortData(data.data);
 
-    data.data.sort(function(a,b) {
-      // Sort by exact time sent
-      var dateDiff = a.date-b.date;
-      return dateDiff;
-    });
-
-    // Give messages an index #
-    var msgOrderInc = 0;
-    data.data.forEach(function(d, i) {
-      d.indexNum = d.indexNum + msgOrderInc;
-      msgOrderInc = msgOrderInc + 1;
-    });
 
 
     var messageEntry = messageList.selectAll("li")
-      .data(data.data)
+      .data(sortedData)
       .enter()
       .append("li")
       .attr("class", function(d) { return "message-listing " + d.from; })
@@ -200,7 +356,7 @@ function drawPlayerList() {
 }
 
 function drawNodeGraph() {
-  var width = 860, height = 500;
+  var width = 400, height = 450;
   //var color = d3.scale.category20();
 
   var d3force = d3.layout.force()
@@ -386,14 +542,10 @@ function drawNodeGraphWithCurves() {
 
 function drawChordGraph() {
 
-  var width = 960,
-    height = 500,
+  var width = 450,
+    height = 450,
     innerRadius = Math.min(width, height) * .41,
     outerRadius = innerRadius * 1.1;
-
-    var fill = d3.scale.ordinal()
-    .domain(d3.range(4))
-    .range(["#000000", "#FFDD89", "#957244", "#F26223"]);
 
     var svg = d3.select("body").append("svg")
     .attr("width", width)

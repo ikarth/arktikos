@@ -85,3 +85,7 @@ ul.data-list li:active {
   stroke: #000;
   stroke-width: .5px;
 }
+
+.timeline {
+  background-color: #ddeeff;
+}
