@@ -10,6 +10,9 @@ var hideModerator = false;
 
 var color = d3.scale.category20();
 
+var currentlySelectedIndex =  -1;
+var currentlySelectedMessage =  -1;
+
 function drawTimeChart() {
   var tip = d3.tip().attr("class", "d3-tip")
   .html(function(d) {
@@ -20,7 +23,6 @@ function drawTimeChart() {
 
   var parseDate = d3.time.format("%Y-%m-%d-%H-%M-%S").parse,
       formatPercent = d3.format(".0%");
-
 
   var x = d3.time.scale().range([0,width]);
   var y = d3.scale.linear().range([height,0]);
@@ -381,3 +383,133 @@ function drawNodeGraphWithCurves() {
 
   d3.select("p").text("Replace");
 }
+
+function drawChordGraph() {
+
+  var width = 960,
+    height = 500,
+    innerRadius = Math.min(width, height) * .41,
+    outerRadius = innerRadius * 1.1;
+
+    var fill = d3.scale.ordinal()
+    .domain(d3.range(4))
+    .range(["#000000", "#FFDD89", "#957244", "#F26223"]);
+
+    var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .append("g")
+    .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+
+  d3.json(dataSource, function(error, graph) {
+    var nodes = graph.nodes;
+    var links = graph.links;
+
+    var tip = d3.tip().attr("class", "d3-tip")
+      .html(function(d) {
+        return nodes[d.index].name;
+      })
+      tip.offset(function() {
+        return [this.getBBox().height / 2, 0]
+      });
+
+    svg.call(tip);
+
+    var dataMatrix = [];
+    nodes.forEach(function(s) {
+      dataMatrix.push(
+      nodes.map(function(t) { return 0; }));
+    });
+
+    links.forEach(function(d) {
+      dataMatrix[d.source][d.target] = d.value; // sent mail
+      //dataMatrix[d.target][d.source] = d.value; // received mail
+    });
+
+    //console.log(dataMatrix);
+    //console.log(links);
+
+    var chord = d3.layout.chord()
+    .padding(.01)
+    .sortSubgroups(d3.descending)
+    .matrix(dataMatrix);
+
+    //console.log(chord);
+
+    svg.append("g").selectAll("path")
+    .data(chord.groups)
+    .enter().append("path")
+    .style("fill", function(d) { return color(d.index); })
+    .style("stroke", function(d) { return color(0); })
+    .attr("d", d3.svg.arc().innerRadius(innerRadius).outerRadius(outerRadius))
+    .attr("class", function(d) { return "arc " + d.name; })
+    //.on("mouseover", tip.show)
+    //.on("mouseout", tip.hide)
+    .on("mouseover", fade(.1))
+    .on("mouseout", fade(1))
+    .append("title")
+        .text(function(d) { return nodes[d.index].name; })
+    ;
+
+    var ticks = svg.append("g").selectAll("g")
+    .data(chord.groups)
+    .enter().append("g").selectAll("g")
+    .data(groupTicks)
+    .enter().append("g")
+    .attr("transform", function(d) {
+      return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")"
+          + "translate(" + outerRadius + ",0)";
+    });
+
+    svg.append("g")
+    .attr("class", "chord")
+    .selectAll("path")
+    .data(chord.chords)
+    .enter().append("path")
+    .attr("d", d3.svg.chord().radius(innerRadius))
+    .style("fill", function(d) { return color(d.source.index); })
+    .style("opacity", 0.7);
+
+        ticks.append("line")
+    .attr("x1", 1)
+    .attr("y1", 0)
+    .attr("x2", 5)
+    .attr("y2", 0)
+    .style("stroke", "#000");
+
+    ticks.append("text")
+    .attr("x", 8)
+    .attr("dy", ".35em")
+    .attr("transform", function(d) { return d.angle > Math.PI ? "rotate(180)translate(-16)" : null; })
+    .style("text-anchor", function(d) { return d.angle > Math.PI ? "end" : null; })
+    .text(function(d) { return d.label; });
+
+    // Returns an array of tick angles and labels, given a group.
+  function groupTicks(d) {
+  var k = (d.endAngle - d.startAngle) / d.value;
+  return d3.range(0, d.value, 5).map(function(v, i) {
+    return {
+      angle: v * k + d.startAngle,
+      //label: i % 5 ? null : v / 5 + "k"
+      //label: i % 2 ? null : v + ""
+      //label: nodes[d.index].name
+    };
+  });
+}
+
+    // Returns an event handler for fading a given chord group.
+    function fade(opacity) {
+    return function(g, i) {
+      svg.selectAll(".chord path")
+        .filter(function(d) { return d.source.index != i && d.target.index != i; })
+        .transition()
+        .style("opacity", opacity);
+    };
+  }
+
+
+  });
+
+}
+
