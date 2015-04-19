@@ -122,7 +122,7 @@ function drawTimeline() {
   var y = d3.scale.linear().range([height,0]);
 
   var timechart = d3.select("body").append("svg")
-  .attr("width", width)
+  .attr("width", width + 10)
   .attr("height", height)
   .attr("class", "timeline");
 
@@ -131,9 +131,9 @@ function drawTimeline() {
 
     var sortedData = sortData(data.data);
 
-    var firstDate = sortedData[0].date;
-    var lastDate = sortedData[data.data.length - 1].date;
-    var curDate = d3.time.day(firstDate);
+    var firstDate = d3.time.day.floor(sortedData[0].date);
+    var lastDate = d3.time.day.ceil(sortedData[data.data.length - 1].date);
+    var curDate = firstDate;
     var maxOrder = 0;
     var orderInc = 0;
 
@@ -256,51 +256,25 @@ function drawTimeChart() {
   var timechart = svg.append("g")
   .attr("width", width)
   .attr("height", height)
+  .attr("transform", "translate(" + 0 + "," + 0 + ")")
   .attr("class", "timechart");
 
   timechart.call(tip);
-
-
-  function updateTimeChart() {
-    d3.json(dataSource, function(error, data) {
-
-      var sortedData = sortData(data.data);
-      //sortedDate = filterData(sortedData);
-
-      var timeExtent = getFocusArea();//d3.extent(sortedData, function(d) { return d3.time.day(d.date); });
-
-      x = d3.time.scale().domain(timeExtent).range([0,width]);
-
-      var buckets = d3.time.days(x.domain()[0], x.domain()[1]);
-
-      //var cell = timechart.selectAll("message-cell")
-      //.transition()
-      //.attr("x", function(d) { return x(d3.time.day(d.date)); })
-
-      timechart.transition()
-        .duration(750)
-        .attr("transform", "translate(" + 400 + "," + 0 + ")");
-
-
-    });
-
-
-  }
 
   d3.json(dataSource, function(error, data) {
 
     var sortedData = sortData(data.data);
     sortedDate = filterData(sortedData);
 
-    var firstDate = sortedData[0].date;
-    var lastDate = sortedData[data.data.length - 1].date;
-    var curDate = d3.time.day(firstDate);
+    var firstDate = d3.time.day.floor(sortedData[0].date);
+    var lastDate = d3.time.day.ceil(sortedData[data.data.length - 1].date);
+    var curDate = firstDate;
     var maxOrder = 0;
     var orderInc = 0;
     sortedData.forEach(function(d, i) {
       if (d3.time.day(curDate) < d3.time.day(d.date)) {
         orderInc = 0;
-        curDate = d3.time.day(d.date);
+        curDate = d3.time.day.floor(d.date);
       }
       d.order = d.order + orderInc;
       orderInc = orderInc + 1;
@@ -318,8 +292,8 @@ function drawTimeChart() {
 
     var lastDatePlusOne = new Date(x.domain()[1]);
     lastDatePlusOne.setDate(lastDatePlusOne.getDate());
-    var buckets = d3.time.days(x.domain()[0], lastDatePlusOne);
-    var cellWidth = d3.scale.ordinal().domain(buckets).rangeRoundBands(x.range(), 0.05).rangeBand();
+    var buckets = d3.time.days(x.domain()[0], x.domain()[1]);
+    var cellWidth = d3.scale.ordinal().domain(buckets).rangeRoundBands(x.range(), 0.0).rangeBand();
 
     var cellHeight = Math.max(5, height / Math.max(maxOrder, 1));
 
@@ -336,26 +310,21 @@ function drawTimeChart() {
     .on("mouseover", tip.show)
     .on("mouseout", tip.hide);
 
+    console.log(x(firstDate));
+
     updateOnSlider.push(function() {
 
       x = d3.time.scale().domain(getFocusArea()).range([0,width]);
+      var x2 = d3.time.scale().domain(timeExtent).range([0,width]);
 
-      console.log(x(firstDate));
-
-      timechart.transition()
-        .duration(150)
-        .attr("transform", "translate(" + x(firstDate) + "," + 0 + ")")
-        .attr("width", width)// * x(getFocusArea()[1]))
-      ;
-
-
+      buckets = d3.time.days(x.domain()[0], x.domain()[1]);
+      cellWidth = d3.scale.ordinal().domain(buckets).rangeRoundBands(x.range(), 0.0).rangeBand();
 
       timechart.selectAll("rect")
         .transition()
-        .duration(750)
-        .attr("transform", "translate(" + (0 - 0) + "," + (0 - 0) + ")")
-        .attr("width", cellWidth)
-      ;
+        .duration(0)
+        .attr("x", function(d) { return x(d3.time.day(d.date)); })
+        .attr("width", cellWidth);
     });
 
   });
