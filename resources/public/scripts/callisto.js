@@ -27,13 +27,29 @@ function togglePlayerState(index) {
   playerState[index] = (playerState.index + 1) % maxPlayerStates;;
 }
 
+
+//
+// Time Slider Functions
+//
+
+var updateOnSlider = [];
+
 var focusArea = [0, 0];
 
 function setFocusArea(extent) {
   focusArea = [extent[0], extent[1]];
+  updateOnSlider.forEach(function(f) {
+    f();
+  });
 }
 
-setFocusArea(function() {
+function getFocusArea() {
+  return focusArea;
+}
+
+/*
+function setupFocusArea() {
+
   d3.json(dataSource, function(error, data) {
     var sortedData = sortData(data.data);
 
@@ -49,7 +65,9 @@ setFocusArea(function() {
     focusArea = [d3.time.day.floor(timeExtent[0]),
             d3.time.day.ceil(timeExtent0[1])];
   });
-});
+}
+setupFocusArea();
+*/
 
 function sortData(sdata) {
     sdata.forEach(function(d) {
@@ -210,20 +228,14 @@ function drawTimeline() {
         }
       }
 
-      setFocusArea[extent1[0], extent1[1]];
+      setFocusArea([extent1[0], extent1[1]]);
       d3.select(this).call(brush.extent(extent1));
     }
 
   });
 }
 
-function updateTimeChart() {
-  d3.json(dataSource, function(error, data) {
 
-    var sortedData = sortData(data.data);
-    sortedDate = filterData(sortedData);
-  }
-}
 
 function drawTimeChart() {
   var tip = d3.tip().attr("class", "d3-tip")
@@ -236,12 +248,44 @@ function drawTimeChart() {
   var x = d3.time.scale().range([0,width]);
   var y = d3.scale.linear().range([height,0]);
 
-  var timechart = d3.select("body").append("svg")
-  .attr("width", width+20)
+  var svg = d3.select("body").append("svg")
+  .attr("width", width)
+  .attr("height", height)
+  .attr("class", "container");
+
+  var timechart = svg.append("g")
+  .attr("width", width)
   .attr("height", height)
   .attr("class", "timechart");
 
   timechart.call(tip);
+
+
+  function updateTimeChart() {
+    d3.json(dataSource, function(error, data) {
+
+      var sortedData = sortData(data.data);
+      //sortedDate = filterData(sortedData);
+
+      var timeExtent = getFocusArea();//d3.extent(sortedData, function(d) { return d3.time.day(d.date); });
+
+      x = d3.time.scale().domain(timeExtent).range([0,width]);
+
+      var buckets = d3.time.days(x.domain()[0], x.domain()[1]);
+
+      //var cell = timechart.selectAll("message-cell")
+      //.transition()
+      //.attr("x", function(d) { return x(d3.time.day(d.date)); })
+
+      timechart.transition()
+        .duration(750)
+        .attr("transform", "translate(" + 400 + "," + 0 + ")");
+
+
+    });
+
+
+  }
 
   d3.json(dataSource, function(error, data) {
 
@@ -262,7 +306,6 @@ function drawTimeChart() {
       orderInc = orderInc + 1;
       maxOrder = Math.max(maxOrder, orderInc);
     });
-
 
     var timeExtent = d3.extent(sortedData, function(d) { return d3.time.day(d.date); });
     timeExtent[1].setDate(timeExtent[1].getDate() + 1);
@@ -293,6 +336,28 @@ function drawTimeChart() {
     .on("mouseover", tip.show)
     .on("mouseout", tip.hide);
 
+    updateOnSlider.push(function() {
+
+      x = d3.time.scale().domain(getFocusArea()).range([0,width]);
+
+      console.log(x(firstDate));
+
+      timechart.transition()
+        .duration(150)
+        .attr("transform", "translate(" + x(firstDate) + "," + 0 + ")")
+        .attr("width", width)// * x(getFocusArea()[1]))
+      ;
+
+
+
+      timechart.selectAll("rect")
+        .transition()
+        .duration(750)
+        .attr("transform", "translate(" + (0 - 0) + "," + (0 - 0) + ")")
+        .attr("width", cellWidth)
+      ;
+    });
+
   });
 }
 
@@ -308,8 +373,6 @@ function drawMessageList() {
   d3.json(dataSource, function(error, data) {
 
     var sortedData = sortData(data.data);
-
-
 
     var messageEntry = messageList.selectAll("li")
       .data(sortedData)

@@ -87,5 +87,10 @@ ul.data-list li:active {
 }
 
 .timeline {
-  background-color: #ddeeff;
+  background-color: #e3eeff;
+}
+
+.timeline .brush {
+  background-color: #dd0000;
+  opacity: 0.13;
 }
