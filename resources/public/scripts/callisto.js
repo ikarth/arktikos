@@ -296,6 +296,7 @@ function drawTimeChart() {
 
     var timeExtent = d3.extent(sortedData, function(d) { return d3.time.day(d.date); });
     timeExtent[1].setDate(timeExtent[1].getDate() + 1);
+    setFocusArea(timeExtent);
 
     x = d3.time.scale()
     .domain(timeExtent)
@@ -381,18 +382,42 @@ function drawMessageList() {
 
     var sortedData = sortData(data.data);
 
+    /*
     var messageEntry = messageList.selectAll("li")
-      .data(sortedData)
+      .data(sortedData, getMessageId)
       .enter()
       .append("li")
       .attr("class", function(d) { return "message-listing " + d.from; })
       .style("background-color", function(d) { return d.color; })
       .html(function(d) {
         return d.from + ": " + d.subject;
-      })
+      });*/
 
-    ;
+    function updateMessageListings() {
+      var filteredData = sortedData
+      .filter(function(d) {
+         return (d.date >= getFocusArea()[0]) && (d.date <= getFocusArea()[1]);
+      });
 
+      var messageEntry = messageList.selectAll("li")
+      .data(filteredData, getMessageId);
+
+      messageEntry.exit().remove();
+
+      messageEntry.enter()
+      .append("li")
+      .attr("class", function(d) { return "message-listing " + d.from; })
+      .style("background-color", function(d) { return d.color; })
+      .html(function(d) {
+        return d.from + ": " + d.subject;
+      });
+
+      messageEntry.order();
+    }
+
+    updateMessageListings();
+
+    updateOnSlider.push(updateMessageListings);
   });
 
 }
@@ -418,11 +443,8 @@ function drawPlayerList() {
       .style("background-color", function(d) { return color(d.index); })
       .html(function(d) {
         return d.name;
-      })
-
-    ;
+      });
   });
-
 }
 
 function drawNodeGraph() {
@@ -455,7 +477,6 @@ function drawNodeGraph() {
   .attr("class","nodegraph");
 
   nodeGraph.call(nodeTip);
-
 
   d3.json(dataSource,
           function(error, graph) {
@@ -596,8 +617,8 @@ function drawNodeGraphWithCurves() {
     //    .text(function(d) { return d.name; });
 
     d3cola.on("tick", function() {
-       node.attr("cx", function(d) { return d.x; })
-      .attr("cy", function(d) { return d.y; });
+      node.attr("cx", function(d) { return d.x; })
+        .attr("cy", function(d) { return d.y; });
       link.attr("d", function(d) {
       return "M " + d.path[0].x + "," + d.path[0].y
            + "S " + d.path[1].x + "," + d.path[1].y
@@ -605,7 +626,6 @@ function drawNodeGraphWithCurves() {
       });
     });
   });
-
 
   d3.select("p").text("Replace");
 }
