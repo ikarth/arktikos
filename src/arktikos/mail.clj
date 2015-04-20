@@ -95,7 +95,7 @@
 (defn hash-message
   "Take an email and convert it to the hashmap format the data processing understands."
   [m]
-  {;:mail/id (message/id m)
+  {:mail/id (message/id m)
    ;:mail/to (redact-addresses (strip-email (message/to m)) (get-redactions))
    :mail/from (redact-addresses (strip-email (message/from m) ) (get-redactions))
    :mail/subject (message/subject m)

@@ -73,6 +73,7 @@ function sortData(sdata) {
     sdata.forEach(function(d) {
       d.date = parseDate(d.date);
       d.senderId = +d.senderId;
+      d.messageId = d.messageId;
       d.color = color(d.senderId);
       d.order = 1;
       d.indexNum = 0;
@@ -108,9 +109,19 @@ function sortData(sdata) {
   return sdata;
 }
 
-function filterData(data) {
+function filterDataByDate(data) {
+  console.log(getFocusArea());
   data.filter(function(d) {
-    return ((d.date >= focusArea[0]) && (d.date <= focusArea[1]));
+    //console.log(d.date);
+    return (d.date >= getFocusArea()[0]) && (d.date <= getFocusArea()[1]);
+  });
+  return data;
+}
+function filterDataByDateInverse(data) {
+  console.log(getFocusArea());
+  data.filter(function(d) {
+    //console.log(d.date);
+    return ((d.date < getFocusArea()[0]) || (d.date > getFocusArea()[1]));
   });
   return data;
 }
@@ -235,7 +246,9 @@ function drawTimeline() {
   });
 }
 
-
+function getMessageId(m) {
+  return m.messageId;
+}
 
 function drawTimeChart() {
   var tip = d3.tip().attr("class", "d3-tip")
@@ -264,11 +277,11 @@ function drawTimeChart() {
   d3.json(dataSource, function(error, data) {
 
     var sortedData = sortData(data.data);
-    sortedDate = filterData(sortedData);
+    //sortedData = filterData(sortedData);
 
     var firstDate = d3.time.day.floor(sortedData[0].date);
     var lastDate = d3.time.day.ceil(sortedData[data.data.length - 1].date);
-    var curDate = firstDate;
+    var curDate = d3.time.day(firstDate);
     var maxOrder = 0;
     var orderInc = 0;
     sortedData.forEach(function(d, i) {
@@ -297,25 +310,49 @@ function drawTimeChart() {
 
     var cellHeight = Math.max(5, height / Math.max(maxOrder, 1));
 
-    var cell = timechart.selectAll("g")
-    .data(sortedData).enter().append("g");
-
-    cell.append("rect")
+    var cell = timechart.selectAll("rect")
+         .data(sortedData, getMessageId).enter().append("rect")
     .attr("x", function(d) { return x(d3.time.day(d.date)); })
     .attr("y", function(d) {return height - (d.order * cellHeight);})
     .attr("height", cellHeight)
     .attr("width", cellWidth)
     .attr("class", function(d) { return d.from + " message-cell"; })
-    .style("fill", function(d){return d.color;})
+    .style("fill", function(d){return color(d.senderId);})
     .on("mouseover", tip.show)
     .on("mouseout", tip.hide);
 
-    console.log(x(firstDate));
+    // Hide data...
+    updateOnSlider.push(function() {
+      var filteredData = sortedData
+      .filter(function(d) {
+         return (d.date >= getFocusArea()[0]) && (d.date <= getFocusArea()[1]);
+      });
+
+       var cells = timechart
+       .selectAll("rect").data(filteredData, getMessageId);
+
+      cells.exit()
+      .style("fill", "#FF4433");
+
+      cells.exit().remove();
+
+      cells.enter()
+      .append("rect")
+      .attr("x", function(d) { return x(d3.time.day(d.date)); })
+      .attr("y", function(d) {return height - (d.order * cellHeight);})
+      .attr("height", cellHeight)
+      .attr("width", cellWidth)
+      .attr("class", function(d) { return d.from + " message-cell"; })
+      .style("fill", function(d) {return color(d.senderId);})
+      .on("mouseover", tip.show)
+      .on("mouseout", tip.hide);
+
+    });
+
 
     updateOnSlider.push(function() {
 
       x = d3.time.scale().domain(getFocusArea()).range([0,width]);
-      var x2 = d3.time.scale().domain(timeExtent).range([0,width]);
 
       buckets = d3.time.days(x.domain()[0], x.domain()[1]);
       cellWidth = d3.scale.ordinal().domain(buckets).rangeRoundBands(x.range(), 0.0).rangeBand();
@@ -326,6 +363,7 @@ function drawTimeChart() {
         .attr("x", function(d) { return x(d3.time.day(d.date)); })
         .attr("width", cellWidth);
     });
+
 
   });
 }
