@@ -109,22 +109,21 @@ function sortData(sdata) {
   return sdata;
 }
 
-function filterDataByDate(data) {
-  console.log(getFocusArea());
-  data.filter(function(d) {
-    //console.log(d.date);
-    return (d.date >= getFocusArea()[0]) && (d.date <= getFocusArea()[1]);
-  });
-  return data;
+
+function filterByDate(d) {
+  return (d.date >= getFocusArea()[0]) && (d.date <= getFocusArea()[1]);
 }
-function filterDataByDateInverse(data) {
-  console.log(getFocusArea());
-  data.filter(function(d) {
-    //console.log(d.date);
-    return ((d.date < getFocusArea()[0]) || (d.date > getFocusArea()[1]));
-  });
-  return data;
+
+function filterByPlayer(d) {
+  return (d.date >= getFocusArea()[0]) && (d.date <= getFocusArea()[1]);
 }
+
+function filterData(d) {
+  return filterByDate(d);
+}
+
+
+
 
 function drawTimeline() {
   var width = 860, height = 15;
@@ -277,7 +276,6 @@ function drawTimeChart() {
   d3.json(dataSource, function(error, data) {
 
     var sortedData = sortData(data.data);
-    //sortedData = filterData(sortedData);
 
     var firstDate = d3.time.day.floor(sortedData[0].date);
     var lastDate = d3.time.day.ceil(sortedData[data.data.length - 1].date);
@@ -325,9 +323,7 @@ function drawTimeChart() {
     // Hide data...
     updateOnSlider.push(function() {
       var filteredData = sortedData
-      .filter(function(d) {
-         return (d.date >= getFocusArea()[0]) && (d.date <= getFocusArea()[1]);
-      });
+      .filter(filterData);
 
        var cells = timechart
        .selectAll("rect").data(filteredData, getMessageId);
@@ -347,12 +343,10 @@ function drawTimeChart() {
       .style("fill", function(d) {return color(d.senderId);})
       .on("mouseover", tip.show)
       .on("mouseout", tip.hide);
-
     });
 
 
     updateOnSlider.push(function() {
-
       x = d3.time.scale().domain(getFocusArea()).range([0,width]);
 
       buckets = d3.time.days(x.domain()[0], x.domain()[1]);
@@ -364,8 +358,6 @@ function drawTimeChart() {
         .attr("x", function(d) { return x(d3.time.day(d.date)); })
         .attr("width", cellWidth);
     });
-
-
   });
 }
 
@@ -395,9 +387,7 @@ function drawMessageList() {
 
     function updateMessageListings() {
       var filteredData = sortedData
-      .filter(function(d) {
-         return (d.date >= getFocusArea()[0]) && (d.date <= getFocusArea()[1]);
-      });
+      .filter(filterData);
 
       var messageEntry = messageList.selectAll("li")
       .data(filteredData, getMessageId);
@@ -567,7 +557,6 @@ function drawNodeGraphWithCurves() {
 
   nodeGraph.call(nodeTip);
 
-
   d3.json(dataSource,
           function(error, graph) {
 
@@ -596,8 +585,7 @@ function drawNodeGraphWithCurves() {
     .attr("class", "link")
     .style("stroke", function(d) { return color(d.path[0].index); })
     .style("stroke-width",
-           function(d) { return Math.sqrt(d.value); })
-    ;
+           function(d) { return Math.sqrt(d.value); });
 
     var node = nodeGraph.selectAll(".node")
     .data(graph.nodes)
