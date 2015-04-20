@@ -13,18 +13,20 @@ var color = d3.scale.category20();
 var parseDate = d3.time.format("%Y-%m-%d-%H-%M-%S").parse,
       formatPercent = d3.format(".0%");
 
-var currentlySelectedIndex =  -1;
-var currentlySelectedMessage =  -1;
+
+//
+// Player Toggle Functions
+//
 
 var playerState = [];
 var maxPlayerStates = 2;
-
-function setPlayerState() {
-
-}
+var playerStateCallbacks = [];
 
 function togglePlayerState(index) {
-  playerState[index] = (playerState.index + 1) % maxPlayerStates;;
+  playerState[index] = (playerState[index] + 1)  % maxPlayerStates;
+  playerStateCallbacks.forEach(function(f) {
+    f();
+  });
 }
 
 
@@ -46,28 +48,6 @@ function setFocusArea(extent) {
 function getFocusArea() {
   return focusArea;
 }
-
-/*
-function setupFocusArea() {
-
-  d3.json(dataSource, function(error, data) {
-    var sortedData = sortData(data.data);
-
-    var firstDate = sortedData[0].date;
-    var lastDate = sortedData[data.data.length - 1].date;
-    var curDate = d3.time.day(firstDate);
-    var maxOrder = 0;
-    var orderInc = 0;
-
-    var timeExtent = d3.extent(data.data, function(d) { return d3.time.day(d.date); });
-    timeExtent[1].setDate(timeExtent[1].getDate() + 1);
-
-    focusArea = [d3.time.day.floor(timeExtent[0]),
-            d3.time.day.ceil(timeExtent0[1])];
-  });
-}
-setupFocusArea();
-*/
 
 function sortData(sdata) {
     sdata.forEach(function(d) {
@@ -109,21 +89,24 @@ function sortData(sdata) {
   return sdata;
 }
 
+// Filtering
+
 
 function filterByDate(d) {
   return (d.date >= getFocusArea()[0]) && (d.date <= getFocusArea()[1]);
 }
 
+function filterBySender(d) {
+  return playerState[d.senderId] == 0;
+}
+
 function filterByPlayer(d) {
-  return (d.date >= getFocusArea()[0]) && (d.date <= getFocusArea()[1]);
+  return playerState[d.senderId] == 0;
 }
 
 function filterData(d) {
   return filterByDate(d);
 }
-
-
-
 
 function drawTimeline() {
   var width = 860, height = 15;
@@ -325,8 +308,8 @@ function drawTimeChart() {
       var filteredData = sortedData
       .filter(filterData);
 
-       var cells = timechart
-       .selectAll("rect").data(filteredData, getMessageId);
+      var cells = timechart
+      .selectAll("rect").data(filteredData, getMessageId);
 
       cells.exit()
       .style("fill", "#FF4433");
@@ -387,7 +370,7 @@ function drawMessageList() {
 
     function updateMessageListings() {
       var filteredData = sortedData
-      .filter(filterData);
+      .filter(filterData).filter(filterBySender);
 
       var messageEntry = messageList.selectAll("li")
       .data(filteredData, getMessageId);
@@ -408,13 +391,12 @@ function drawMessageList() {
     updateMessageListings();
 
     updateOnSlider.push(updateMessageListings);
+    playerStateCallbacks.push(updateMessageListings);
   });
-
 }
 
 function drawPlayerList() {
   //var color = d3.scale.category20();
-
 
   var playerList = d3.select("body")
   .append("div")
@@ -425,6 +407,10 @@ function drawPlayerList() {
   d3.json(dataSource, function(error, data) {
     //console.log(data.nodes);
 
+    data.nodes.forEach(function(d){
+      playerState[d.index] = 0;
+    });
+
     var playerEntry = playerList.selectAll("li")
       .data(data.nodes)
       .enter()
@@ -433,7 +419,8 @@ function drawPlayerList() {
       .style("background-color", function(d) { return color(d.index); })
       .html(function(d) {
         return d.name;
-      });
+      })
+    .on("click", function(d){ togglePlayerState(d.index)});
   });
 }
 
@@ -508,7 +495,8 @@ function drawNodeGraph() {
     .call(force.drag)
     .on("mouseover", nodeTip.show)
     .on("mouseout", nodeTip.hide)
-    ;
+    .on("click", function(d){ togglePlayerState(d.index)});
+   ;
 
     //node.append("title")
     //    .text(function(d) { return d.name; });
@@ -678,6 +666,7 @@ function drawChordGraph() {
     //.on("mouseout", tip.hide)
     .on("mouseover", fade(.1))
     .on("mouseout", fade(1))
+    .on("click", function(d){ togglePlayerState(d.index)})
     .append("title")
         .text(function(d) { return nodes[d.index].name; })
     ;
@@ -701,7 +690,7 @@ function drawChordGraph() {
     .style("fill", function(d) { return color(d.source.index); })
     .style("opacity", 0.7);
 
-        ticks.append("line")
+    ticks.append("line")
     .attr("x1", 1)
     .attr("y1", 0)
     .attr("x2", 5)

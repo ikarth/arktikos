@@ -19,7 +19,7 @@
                  [org.clojure/core.memoize "0.5.6"]
 
                  ]
-  :plugins [[lein-ring "0.8.13"]]
+  :plugins [[lein-ring "0.8.13" :exclusions [org.clojure/clojure]]]
   :ring {:handler arktikos.handler/app}
   :profiles
   {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]

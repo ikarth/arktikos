@@ -41,7 +41,7 @@
         :body (get-mail-data :local)})
   (route/files "public")
   ;(route/files "/" (do (println root) {:root root}))
-  (route/resources "/")
+  (route/resources "public")
   (route/not-found "Not Found 2"))
 
 (def app
