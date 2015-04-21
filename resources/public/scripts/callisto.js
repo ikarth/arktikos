@@ -22,6 +22,12 @@ var playerState = [];
 var maxPlayerStates = 2;
 var playerStateCallbacks = [];
 
+d3.json(dataSource, function(error, data) {
+  data.nodes.forEach(function(d){
+    playerState[d.index] = 0;
+  });
+});
+
 function togglePlayerState(index) {
   playerState[index] = (playerState[index] + 1)  % maxPlayerStates;
   playerStateCallbacks.forEach(function(f) {
@@ -29,10 +35,53 @@ function togglePlayerState(index) {
   });
 }
 
+function getNodeId(n) {
+  return n.id;
+}
+/*
+function getLinkId(n) {
+  return n.source.id + (n.target.id * playerState.length * 100);
+}
+*/
+function getLinkSource(l) {
+  return l.source;
+}
+
+function getLinkTarget(l) {
+  return l.target;
+}
+
+function filterNodeByPlayer(d) {
+  return (playerState[d.id] == 0);
+}
+/*
+function filterLink(d) {
+  return ((playerState[d.s] == 0) && (playerState[d.t] == 0));
+}
+
+function filterLinkBySource(d) {
+  return !(playerState[d.source] >= 1);
+}
+
+function filterLinkByTarget(d) {
+  return !(playerState[d.target] >= 1);
+}
+*/
+function filterLinks(d) {
+  return  ((playerState[d.s] == 0) && (playerState[d.t] == 0));
+}
+
+
+
 
 //
 // Time Slider Functions
 //
+
+
+function getMessageId(m) {
+  return m.messageId;
+}
 
 var updateOnSlider = [];
 
@@ -96,7 +145,7 @@ function filterByDate(d) {
   return (d.date >= getFocusArea()[0]) && (d.date <= getFocusArea()[1]);
 }
 
-function filterBySender(d) {
+function filterBySenderId(d) {
   return playerState[d.senderId] == 0;
 }
 
@@ -165,7 +214,7 @@ function drawTimeline() {
     .extent([d3.time.day.floor(firstDate), d3.time.day.ceil(lastDate)])
     .on("brush",brushed)
     ;
-    console.log(firstDate);
+    //console.log(firstDate);
 
     var gBrush = timechart.append("g")
     .attr("class", "brush")
@@ -228,9 +277,6 @@ function drawTimeline() {
   });
 }
 
-function getMessageId(m) {
-  return m.messageId;
-}
 
 function drawTimeChart() {
   var tip = d3.tip().attr("class", "d3-tip")
@@ -370,7 +416,7 @@ function drawMessageList() {
 
     function updateMessageListings() {
       var filteredData = sortedData
-      .filter(filterData).filter(filterBySender);
+      .filter(filterData).filter(filterBySenderId);
 
       var messageEntry = messageList.selectAll("li")
       .data(filteredData, getMessageId);
@@ -407,9 +453,9 @@ function drawPlayerList() {
   d3.json(dataSource, function(error, data) {
     //console.log(data.nodes);
 
-    data.nodes.forEach(function(d){
-      playerState[d.index] = 0;
-    });
+    //data.nodes.forEach(function(d){
+    //  playerState[d.index] = 0;
+    //});
 
     var playerEntry = playerList.selectAll("li")
       .data(data.nodes)
@@ -424,6 +470,312 @@ function drawPlayerList() {
   });
 }
 
+function drawNodeGraph() {
+  var width = 400, height = 450;
+
+  var d3force = d3.layout.force()
+    .charge(-280)
+    .linkDistance(80)
+    .size([width, height]);
+
+  var d3cola = cola.d3adaptor()
+    .linkDistance(50)
+    .avoidOverlaps(true)
+    .symmetricDiffLinkLengths(25)
+    //.jaccardLinkLengths(40,0.7)
+    .size([width,height]);
+
+  var force = d3cola;
+  //var force = d3force;
+
+  var nodeTip = d3.tip().attr("class", "d3-tip")
+                  .html(function(d) {
+                    return d.name;
+                  });
+
+  var nodeGraph = d3.select("body").append("svg")
+  .attr("width", width)
+  .attr("height", height)
+  .attr("class","nodegraph");
+
+  nodeGraph.call(nodeTip);
+
+  d3.json(dataSource,
+          function(error, graph) {
+    graph.nodes.forEach(function(d) {
+      d.id = +d.index;
+    });
+    graph.links.forEach(function(d){
+      d.s = +d.source;
+      d.t = +d.target;
+      d.id = d.s + ( d.t * graph.nodes.length * 10);
+    });
+
+    function updateNodes() {
+
+    var nodes = graph.nodes.filter(filterNodeByPlayer);
+    var links = graph.links.filter(filterLinks);
+
+    var node = nodeGraph.selectAll(".node").data(nodes, function(d) { return d.id; });
+    var link = nodeGraph.selectAll(".link").data(links, function(d) { return d.id; });
+
+    link.exit().remove();
+
+    link
+      .enter().append("line")
+      .attr("class", "link")
+      .style("stroke", function(d) { return color(d.s); })
+      .style("stroke-width",
+             function(d) { return Math.sqrt(d.value); });
+
+    node.exit().remove();
+
+    node.enter().append("circle")
+      .attr("class", function(d) { return "node " + d.name; })
+      .attr("r", 9)
+      .style("fill", function(d) { return color(d.id); })
+      //.on("click", function (d) {
+      //    d.fixed = true;
+      //})
+      .call(force.drag)
+      .attr("cx", width / 2)
+      .attr("cy", function(d) { return d.y; })
+      .on("mouseover", nodeTip.show)
+      .on("mouseout", nodeTip.hide)
+      //.on("click", function(d){ togglePlayerState(d.index)})
+      ;
+
+      force.on("tick", function () {
+        link.attr("x1", function(d) { return d.source.x; })
+            .attr("y1", function(d) { return d.source.y; })
+            .attr("x2", function(d) { return d.target.x; })
+            .attr("y2", function(d) { return d.target.y; });
+
+        node.attr("cx", function(d) { return d.x; })
+            .attr("cy", function(d) { return d.y; });
+      });
+
+    force
+    .nodes(nodes)
+    .links(links)
+    .start();
+    }
+
+    updateNodes();
+     playerStateCallbacks.push(updateNodes);
+    playerStateCallbacks.push(nodeTip.hide);
+  });
+
+
+}
+
+/*
+function drawNodeGraph() {
+  var width = 400, height = 450;
+
+  var d3force = d3.layout.force()
+    .charge(-280)
+    .linkDistance(80)
+    .size([width, height]);
+
+  var d3cola = cola.d3adaptor()
+    .linkDistance(50)
+    .avoidOverlaps(true)
+    .symmetricDiffLinkLengths(25)
+    //.jaccardLinkLengths(40,0.7)
+    .size([width,height]);
+
+  //var force = d3cola;
+  var force = d3force;
+
+  var nodeTip = d3.tip().attr("class", "d3-tip")
+                  .html(function(d) {
+                    return d.name;
+                  });
+
+  var nodeGraph = d3.select("body").append("svg")
+  .attr("width", width)
+  .attr("height", height)
+  .attr("class","nodegraph");
+
+  nodeGraph.call(nodeTip);
+
+  d3.json(dataSource,
+          function(error, graph) {
+    graph.nodes.forEach(function(d) {
+      d.id = +d.index;
+    });
+
+    function updateNodes() {
+
+    var nodes = graph.nodes.filter(filterNodeByPlayer);
+
+
+    var node = nodeGraph.selectAll(".node").data(nodes, function(d) { return d.id; });
+
+      node.exit().remove();
+
+    node.enter().append("circle")
+      .attr("class", function(d) { return "node " + d.name; })
+      .attr("r", 9)
+      .style("fill", function(d) { return color(d.id); })
+      //.on("click", function (d) {
+      //    d.fixed = true;
+      //})
+      .call(force.drag)
+      .attr("cx", width / 2)
+      .attr("cy", function(d) { return d.y; })
+      .on("mouseover", nodeTip.show)
+      .on("mouseout", nodeTip.hide)
+      //.on("click", function(d){ togglePlayerState(d.index)})
+      ;
+
+      force.on("tick", function () {
+        //link.attr("x1", function(d) { return d.source.x; })
+        //    .attr("y1", function(d) { return d.source.y; })
+        //    .attr("x2", function(d) { return d.target.x; })
+        //    .attr("y2", function(d) { return d.target.y; });
+
+        node.attr("cx", function(d) { return d.x; })
+            .attr("cy", function(d) { return d.y; });
+      });
+
+    force
+    .nodes(nodes)
+    //.links(links)
+    .start();
+    }
+
+    updateNodes();
+     playerStateCallbacks.push(updateNodes);
+    playerStateCallbacks.push(nodeTip.hide);
+  });
+
+
+}
+*/
+/*
+function drawNodeGraph() {
+  var width = 400, height = 450;
+
+  var d3force = d3.layout.force()
+    .charge(-280)
+    .linkDistance(80)
+    .size([width, height]);
+
+  var d3cola = cola.d3adaptor()
+    .linkDistance(50)
+    .avoidOverlaps(true)
+    .symmetricDiffLinkLengths(25)
+    //.jaccardLinkLengths(40,0.7)
+    .size([width,height]);
+
+  //var force = d3cola;
+  var force = d3force;
+
+  var nodeTip = d3.tip().attr("class", "d3-tip")
+                  .html(function(d) {
+                    return d.name;
+                  });
+
+  var nodeGraph = d3.select("body").append("svg")
+  .attr("width", width)
+  .attr("height", height)
+  .attr("class","nodegraph");
+
+  nodeGraph.call(nodeTip);
+
+  var nodes = [];
+  var links = [];
+  var lastNodeId = 0;
+
+  force
+  .nodes(nodes)
+  .links(links)
+  .start();
+
+  d3.json(dataSource,
+          function(error, graph) {
+    nodes = graph.nodes;
+    links = graph.links;
+
+    console.log(nodes);
+    console.log(links);
+
+    nodes.forEach(function(d) {
+      d.id = +d.index;
+      d.x = width/2;
+      d.y = height/2;
+    });
+    links.forEach(function(d) {
+      d.s = +d.source;
+      d.t = d.target;
+      d.id = d.s + (d.t * nodes.length);
+    });
+
+
+  function updateNodes() {
+    console.log("Updating Nodes...");
+    console.log(nodes);
+    console.log(links);
+
+    var link = nodeGraph.selectAll("line");
+    var node = nodeGraph.selectAll("circle");
+
+    link = link.data(links);
+
+    link.enter().append("line")
+      .attr("class", "link")
+      .style("stroke", function(d) { return color(d.source.id); })
+      .style("stroke-width",
+             function(d) { return Math.sqrt(d.value); });
+
+    link.exit().remove();
+
+    node = node.data(nodes, function(d) { return d.id; });
+
+    node.exit().remove();
+
+      node.enter().append("circle")
+      .attr("class", function(d) { return "node " + d.name; })
+      .attr("r", 9)
+      .style("fill", function(d) { return color(d.index); })
+      //.on("click", function (d) {
+      //    d.fixed = true;
+      //})
+      .call(force.drag)
+      .attr("cx", width / 2)
+      .attr("cy", function(d) { return d.y; })
+      .on("mouseover", nodeTip.show)
+      .on("mouseout", nodeTip.hide)
+      //.on("click", function(d){ togglePlayerState(d.index)})
+      ;
+
+      force.on("tick", function () {
+        link.attr("x1", function(d) { return d.source.x; })
+            .attr("y1", function(d) { return d.source.y; })
+            .attr("x2", function(d) { return d.target.x; })
+            .attr("y2", function(d) { return d.target.y; });
+
+        node.attr("cx", function(d) { return d.x; })
+            .attr("cy", function(d) { return d.y; });
+      });
+
+
+      force.start();
+    }
+
+    updateNodes();
+   playerStateCallbacks.push(updateNodes);
+  playerStateCallbacks.push(nodeTip.hide);
+
+
+  });
+
+}
+*/
+
+/*
 function drawNodeGraph() {
   var width = 400, height = 450;
   //var color = d3.scale.category20();
@@ -445,8 +797,8 @@ function drawNodeGraph() {
     //.jaccardLinkLengths(40,0.7)
     .size([width,height]);
 
-  var force = d3cola;
-  //var force = d3force;
+  //var force = d3cola;
+  var force = d3force;
 
   var nodeGraph = d3.select("body").append("svg")
   .attr("width", width)
@@ -455,48 +807,61 @@ function drawNodeGraph() {
 
   nodeGraph.call(nodeTip);
 
+  var nodes = [];
+  var links = [];
+
   d3.json(dataSource,
           function(error, graph) {
 
-    var nodes = graph.nodes;
-    var links = graph.links;
+    nodes = graph.nodes;
+    links = graph.links;
+    updateNodes();
+  });
 
-    // TODO: generalize to all players
-    if(hideModerator) {
-      var moderatorIndex = nodes.filter(function(d) { return d.name == "Moderator"; })[0].index;
-      //nodes = nodes.filter(function(d) { return d.name != "Moderator"; });
-      links = links.filter(function(d) {
-        return ((d.source != moderatorIndex) && (d.target != moderatorIndex));
-      });
-    };
+  function updateNodes() {
+    console.log("Updating Nodes...");
+      var subsetNodes = nodes;//.filter(filterNodeByPlayer);
+      var subsetLinks = links;//.filter(filterLink);
 
-    force
-    .nodes(nodes)
-    .links(links)
-    .start();
+      force
+      .nodes(subsetNodes)
+      .links(subsetLinks)
+      .start();
 
-    var link = nodeGraph.selectAll(".link")
-    .data(links)
-    .enter().append("line")
-    .attr("class", "link")
-    .style("stroke", function(d) { return color(d.source.index); })
-    .style("stroke-width",
-           function(d) { return Math.sqrt(d.value); });
+      var link = nodeGraph.selectAll(".link")
+      .data(subsetLinks);
 
-    var node = nodeGraph.selectAll(".node")
-    .data(nodes)
-    .enter().append("circle")
-    .attr("class", function(d) { return "node " + d.name; })
-    .attr("r", 7)
-    .style("fill", function(d) { return color(d.index); })
-    //.on("click", function (d) {
-    //    d.fixed = true;
-    //})
-    .call(force.drag)
-    .on("mouseover", nodeTip.show)
-    .on("mouseout", nodeTip.hide)
-    .on("click", function(d){ togglePlayerState(d.index)});
-   ;
+      link.exit().remove();
+
+      link
+      .enter().append("line")
+      .attr("class", "link")
+      .style("stroke", function(d) { return color(d.source.index); })
+      .style("stroke-width",
+             function(d) { return Math.sqrt(d.value); });
+
+      var node = nodeGraph.selectAll(".node")
+      .data(subsetNodes);
+
+      node.exit().remove();
+
+      node.enter().append("circle")
+      .attr("class", function(d) { return "node " + d.name; })
+      .attr("r", 7)
+      .style("fill", function(d) { return color(d.index); })
+      //.on("click", function (d) {
+      //    d.fixed = true;
+      //})
+      .call(force.drag)
+      .on("mouseover", nodeTip.show)
+      .on("mouseout", nodeTip.hide)
+      .on("click", function(d){ togglePlayerState(d.index)})
+      ;
+
+    node
+    .style("fill", function(d) { return color(d.index); });
+
+
 
     //node.append("title")
     //    .text(function(d) { return d.name; });
@@ -513,11 +878,19 @@ function drawNodeGraph() {
       node.attr("cx", function(d) { return d.x; })
       .attr("cy", function(d) { return d.y; });
     });
-  });
+  }
+
+  updateNodes();
+  playerStateCallbacks.push(updateNodes);
+  playerStateCallbacks.push(nodeTip.hide);
+
+
 
 
   d3.select("p").text("Replace");
 }
+*/
+
 
 function drawNodeGraphWithCurves() {
   var width = 860, height = 500;
