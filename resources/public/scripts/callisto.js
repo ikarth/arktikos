@@ -6,8 +6,6 @@ console.log("Starting...");
 
 var tickCount = 0;
 
-var hideModerator = false;
-
 var color = d3.scale.category20();
 
 var parseDate = d3.time.format("%Y-%m-%d-%H-%M-%S").parse,
@@ -34,19 +32,6 @@ function togglePlayerState(index) {
     f();
   });
 }
-/*
-function getNodeId(n) {
-  return n.id;
-}
-*/
-/*
-function getLinkSource(l) {
-  return l.source;
-}
-
-function getLinkTarget(l) {
-  return l.target;
-}*/
 
 function filterNodeByPlayer(d) {
   return (playerState[d.id] == 0);
@@ -106,20 +91,6 @@ function sortData(sdata) {
       msgOrderInc = msgOrderInc + 1;
     });
 
-    /*
-    sdata.sort(function(a,b) {
-      // Sort by user ID
-      //var dateDiff = d3.time.day(a.date)-d3.time.day(b.date);
-      // Sort by exact time sent
-      var dateDiff = a.date-b.date;
-
-      if (dateDiff == 0) {
-        dateDiff = a.senderId - b.senderId;
-      }
-      return dateDiff;
-    });
-    */
-
   return sdata;
 }
 
@@ -149,7 +120,7 @@ function drawTimeline() {
   var y = d3.scale.linear().range([height,0]);
 
   var timechart = d3.select("body").append("svg")
-  .attr("width", width + 10)
+  .attr("width", width)
   .attr("height", height)
   .attr("class", "timeline");
 
@@ -168,7 +139,8 @@ function drawTimeline() {
 
     sortedData.forEach(function(d, i) {
       if (d3.time.day(curDate) < d3.time.day(d.date)) {
-        timelineData.push({value: orderInc, date: curDate});
+        //console.log(orderInc);
+        timelineData.push({v: orderInc, date: curDate});
         orderInc = 0;
         curDate = d3.time.day(d.date);
       }
@@ -176,9 +148,12 @@ function drawTimeline() {
       orderInc = orderInc + 1;
       maxOrder = Math.max(maxOrder, orderInc);
     });
-    timelineData.push({value: orderInc, date: curDate});
+    timelineData.push({v: orderInc, date: curDate});
+    timelineData.sort(function(a, b){ return a.date - b.date; });
 
-    var timeExtent = d3.extent(data.data, function(d) { return d3.time.day(d.date); });
+    //console.log(timelineData);
+
+    var timeExtent = d3.extent(timelineData, function(d) { return d3.time.day(d.date); });
     timeExtent[1].setDate(timeExtent[1].getDate() + 1);
 
     x = d3.time.scale()
@@ -189,49 +164,42 @@ function drawTimeline() {
 
     var lastDatePlusOne = new Date(x.domain()[1]);
     lastDatePlusOne.setDate(lastDatePlusOne.getDate());
-    var buckets = d3.time.days(x.domain()[0], lastDatePlusOne);
-    var cellWidth = d3.scale.ordinal().domain(buckets).rangeRoundBands(x.range(), 0.05).rangeBand();
+    var buckets = d3.time.days(x.domain()[0], x.domain()[1]);
+    var cellWidth = d3.scale.ordinal().domain(buckets).rangeRoundBands(x.range(), 0.01).rangeBand();
 
     var cellHeight = Math.max(0, height / Math.max(maxOrder, 1));
 
-    var brush = d3.svg.brush()
-    .x(x)
-    .extent([d3.time.day.floor(firstDate), d3.time.day.ceil(lastDate)])
-    .on("brush",brushed)
+    var showTimeTicks = true;
+
+    if(showTimeTicks) {
+
+      var timeTick = timechart.selectAll("rect")
+      .data(timelineData);
+
+      timeTick.enter().append("rect")
+      .attr("x", function(d) { return x(d.date); })
+      .attr("y", function(d) {return height - (d.v * cellHeight);})
+      .attr("height", function(d) {return d.v * cellHeight;})
+      .attr("width", cellWidth)
+      .style("fill", "#6677cc")
+          .append("title")
+        .text(function(d) { return (d.date + " " + d.v); })
     ;
-    //console.log(firstDate);
 
-    var gBrush = timechart.append("g")
-    .attr("class", "brush")
-    .call(brush);
 
-    gBrush.selectAll("rect")
-      .attr("height", height);
+    } else {
+      var cell = timechart.selectAll("g")
+      .data(data.data).enter().append("g");
 
-    var timeTick = timechart.selectAll("g")
-    .data(timelineData).enter().append("g");
-
-    timeTick.append("rect")
-    .attr("x", function(d) { return x(d3.time.day(d.date)); })
-    .attr("y", function(d) {return height - (d.value * cellHeight);})
-    .attr("height", function(d) {return d.value * cellHeight;})
-    .attr("width", cellWidth)
-    .style("fill", "#6677cc")
-    ;
-    /*
-    var cell = timechart.selectAll("g")
-    .data(data.data).enter().append("g");
-
-    cell.append("rect")
-    .attr("x", function(d) { return x(d3.time.day(d.date)); })
-    .attr("y", function(d) {return height - (d.order * cellHeight);})
-    .attr("height", cellHeight)
-    .attr("width", cellWidth)
-    .attr("class", function(d) { return d.from + " message-cell"; })
-    .style("fill", function(d){return d.color;})
-    .on("mouseover", tip.show)
-    .on("mouseout", tip.hide);
-    */
+      cell.append("rect")
+      .attr("x", function(d) { return x(d3.time.day(d.date)); })
+      .attr("y", function(d) {return height - (d.order * cellHeight);})
+      .attr("height", cellHeight)
+      .attr("width", cellWidth)
+      .attr("class", function(d) { return d.from + " message-cell"; })
+      .style("fill", function(d){return d.color;})
+      ;
+    }
 
     function brushed() {
       var extent0 = brush.extent(),
@@ -255,9 +223,26 @@ function drawTimeline() {
         }
       }
 
+
+
+
       setFocusArea([extent1[0], extent1[1]]);
       d3.select(this).call(brush.extent(extent1));
     }
+
+    var brush = d3.svg.brush()
+      .x(x)
+      .extent([d3.time.day.floor(firstDate), d3.time.day.ceil(lastDate)])
+      .on("brush",brushed)
+      ;
+
+    var gBrush = timechart.append("g")
+    .attr("class", "brush")
+    .call(brush);
+
+    gBrush.selectAll("rect")
+      .attr("height", height);
+
 
   });
 }
@@ -335,6 +320,7 @@ function drawTimeChart() {
     .on("mouseout", tip.hide);
 
     // Hide data...
+    /*
     updateOnSlider.push(function() {
       var filteredData = sortedData
       .filter(filterData);
@@ -358,6 +344,7 @@ function drawTimeChart() {
       .on("mouseover", tip.show)
       .on("mouseout", tip.hide);
     });
+    */
 
 
     updateOnSlider.push(function() {
@@ -401,7 +388,8 @@ function drawMessageList() {
 
     function updateMessageListings() {
       var filteredData = sortedData
-      .filter(filterData).filter(filterBySenderId);
+      .filter(filterData)
+      .filter(filterBySenderId);
 
       var messageEntry = messageList.selectAll("li")
       .data(filteredData, getMessageId);
