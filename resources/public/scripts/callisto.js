@@ -94,6 +94,13 @@ function sortData(sdata) {
   return sdata;
 }
 
+function sortDateCount(dcdata) {
+  dcdata.forEach(function(d){
+    //
+  });
+  return dcdata;
+}
+
 // Filtering
 
 
@@ -643,6 +650,77 @@ function drawNodeGraphWithCurves() {
   d3.select("p").text("Replace");
 }
 
+
+function drawChordGraph() {
+
+  var width = 450,
+    height = 450,
+    innerRadius = Math.min(width, height) * .41,
+    outerRadius = innerRadius * 1.1;
+
+  var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .append("g")
+    .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+  var dataMatrix = [];
+  var nodes = [];
+  var links = [];
+  var messages = [];
+  var bydates = [];
+
+  function getDefaultLayout() {
+    return d3.layout.chord()
+    .padding(0.03)
+    .sortSubgroups(d3.descending)
+    .sortChords(d3.ascending);
+  }
+  var last_layout;
+
+  function updateChords() {
+    // assemble data matrix
+    d3.json(dataSource, function(error, graph) {
+      nodes = graph.nodes;
+      links = graph.links;
+      messages = graph.data;
+      bydates = graph.dates;
+
+      nodes.forEach(function(d) {
+        d.id = +d.index;
+      });
+      links.forEach(function(d){
+        d.s = +d.source;
+        d.t = +d.target;
+        d.id = d.s + ( d.t * graph.nodes.length * 10);
+        d.count = 0;
+        var msgs = messages.filter(function(d){
+
+        });
+      });
+      messages.forEach(function(d){
+
+      });
+      console.log(links);
+
+      // Create Matrix
+
+
+      // Assign Matrix to layout
+
+      //layout = getDefaultLayout();
+      //layout.matrix(matrix);
+
+    });
+
+  }
+  updateChords();
+
+
+}
+
+
+/*
 function drawChordGraph() {
 
   var width = 450,
@@ -769,3 +847,4 @@ function drawChordGraph() {
 
 }
 
+*/

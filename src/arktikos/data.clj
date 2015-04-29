@@ -28,11 +28,45 @@
 ;       (clj-time.format/parse (:mail/date-sent %1)))
 ;   msgs))
 
+
+;;;
+;;; Dates
+;;;
+
+
+;; joda.time has a withTimeAtStartOfDay() method, but clj-time doesn't implement that (yet)
+(defn get-start-of-day [date]
+  (clj-time.core/date-time
+   (clj-time.core/year date)
+   (clj-time.core/month date)
+   (clj-time.core/day date)))
+
+(defn get-message-date [msg]
+  (clj-time.coerce/from-date (:mail/date-sent msg)))
+
+(defn get-message-day [msg]
+  (get-start-of-day (get-message-date msg)))
+
+(defn get-days-from-messages
+  "given a seq of messages, get a list of dates."
+  [msgs]
+  (distinct (map get-message-day msgs)))
+
+(defn subset-mail-by-dates [msgs start end]
+  (filter
+     (fn [m]
+       (clj-time.core/within?
+         start
+         end
+         (get-message-date m)))
+     msgs))
+
 (defn subset-mail-by-date [msgs date]
-  (let [date (clj-time.format/parse date)]
-    (filter
-     #()
-     msgs)))
+  (let [start (get-start-of-day date)
+        end (clj-time.core/plus start (clj-time.core/days 1))
+        ]
+    (subset-mail-by-dates msgs start end)))
+
 
 ;;;
 ;;; Nodes and Edges
@@ -70,8 +104,38 @@
                                  (mapcat edges-from-mail msgs))))
                edges)))
 
+(defn edge-weights-drop-zero
+  "Given the list of edges and a message set, create a map of the count
+  of messages per edge. Omits 0 count edges."
+  [edges msgs]
+  (filter #(< 0 (second %1))
+  (zipmap edges
+          (map (fn [edg] (count (filter
+                                 (fn [a] (= a edg))
+                                 (mapcat edges-from-mail msgs))))
+               edges))))
+
 (defn find-weight [edge weights]
   (get edge weights))
+
+(defn edge-weights-per-date
+  "Given a list of edges and a message set, create a map of the count of messages per
+  edge per date."
+  [edges msgs]
+  (let [days (get-days-from-messages msgs)]
+    (zipmap
+     days ;(map clj-time.coerce/to-date days)
+     (map (fn [d] (edge-weights-drop-zero edges (subset-mail-by-date msgs d))) days))))
+
+(edge-weights-per-date
+ (mapcat edges-from-mail (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/"))
+ (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
+      )
+
+;(let [msgs (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
+;      edges (mail-to-edges msgs)]
+;  (edge-weights-per-date edges msgs (clj-time.core/date-time 2014 4 9))
+;  )
 
 (defn node-weight-from
   "Given the list of nodes and a set of messages, create a map of the count of sent messages."
@@ -145,13 +209,36 @@
                       })))
        edges)))
 
+(defn encode-date-edge-count [[[f t] c] nodes]
+  (let []
+    {;:target-name t;(get nodes t)
+     :target (get nodes t)
+     ;:source-name f
+     :source (get nodes f)
+     :count c}
+    ))
+
+(defn encode-mail-per-date [msgs nodes]
+  ;(filter
+  ; #(> (:count (:counts %1)) 0)
+  (let [n (index-nodes nodes)]
+   (map
+    (fn [i] {:date (clj-time.coerce/to-date (first i))
+             :counts (map #(encode-date-edge-count %1 n)
+                            (second i))
+             })
+    (edge-weights-per-date (mapcat edges-from-mail msgs) msgs))))
+;)
+
+
 (defn encode-mail [msgs]
-  (let [nodes (elide-nodes (nodes-from-mail msgs) []);["Moderator" "INVALID ADDRESS"])
+  (let [nodes (nodes-from-mail msgs)
         edges (mail-to-edges msgs)
         eweights (edge-weights edges msgs)]
     {:nodes (encode-nodes nodes)
      :links (remove nil? (encode-edges nodes edges eweights))
      :data (mail-to-data msgs (index-nodes nodes))
+     :dates (encode-mail-per-date msgs nodes)
      }))
 
 (defn export-mail [msgs destination]
@@ -170,3 +257,28 @@
 
 ;(export-mail (mail/ingest-mail "mail/Book One_20150404-0926/messages/"))
 
+;(get {})
+
+;(nodes-from-mail (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
+;                 )
+
+(encode-mail-per-date (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
+                      (nodes-from-mail (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/"))
+                      )
+
+(json/generate-string
+ (encode-mail-per-date (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
+                      (nodes-from-mail (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/"))
+                      )
+  {:pretty true :escape-non-ascii true :date-format "yyyy-MM-dd-HH-mm-ss"}
+ )
+
+;(json/generate-string
+; (map
+;   (fn [n] {:date (clj-time.coerce/to-date (first n)) :counts (second n)})
+;   (edge-weights-per-date
+;    (mapcat edges-from-mail (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/"))
+;    (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
+;          ))
+; {:pretty true :escape-non-ascii true :date-format "yyyy-MM-dd-HH-mm-ss"}
+; )
