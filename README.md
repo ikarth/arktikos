@@ -9,7 +9,7 @@ Arktikos is in a very alpha state right now, but despite what the Bothans told y
 
 ## Live Demo
 
-[http://callisto.isaackarth.com/arktikos/]
+http://callisto.isaackarth.com/arktikos/
 
 ## Prerequisites
 
