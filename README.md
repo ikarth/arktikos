@@ -19,8 +19,19 @@ To start a web server for the application, run:
 
     lein ring server
 
-This is, admittedly, a bit bare metal right now. It'd be nice to get it packaged up so that people can run it without editing the code.
+This is, admittedly, a bit bare metal right now. It'd be nice to get it packaged up so that people can run it without editing the code or needing Leiningen.
 
+
+## TODO
+
+A lot of stuff:
+
+* Clean up configuration files so you don't have to read the setup code.
+* Clean up the frontend display:
+  * Improve the UI
+  * Move JSON data updates to unified function that all the graphs can share
+  * Add more graphs and data displays
+* Better distribution, in a downloadable package
 
 ## License
 

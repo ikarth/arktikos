@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <title>Callisto Manager</title>
-
+        <link href='http://fonts.googleapis.com/css?family=Raleway:400,700,900' rel='stylesheet' type='text/css'>
         <link rel="stylesheet" type="text/css" href="scripts/callisto.css" />
     </head>
     <body>
@@ -13,21 +13,27 @@
         <script src="scripts/cola.v3.min.js"></script>
         <script src="scripts/cola_adaptor.js"></script>
         <h1>Callisto Manager</h1>
-        <script type="text/javascript">
-            drawTimeChart();
-        </script>
-        <script type="text/javascript">
-            drawTimeline();
-        </script>
-        <script type="text/javascript">
-            drawNodeGraph();
-        </script>
-        <script type="text/javascript">
-            drawChordGraph();
-        </script>
-        <script type="text/javascript">
-            drawPlayerList();
-        </script>
+        <div id="player-list-box">
+            <script type="text/javascript">
+                drawPlayerList();
+            </script>
+        </div>
+        <div id="graph-box">
+            <div id="timeline-box">
+                <script type="text/javascript">
+                    drawTimeChart();
+                </script>
+                <script type="text/javascript">
+                    drawTimeline();
+                </script>
+            </div>
+            <script type="text/javascript">
+                drawNodeGraph();
+                drawChordGraph();
+                //drawChordGraphStatic();
+            </script>
+        </div>
+
         <script type="text/javascript">
             drawMessageList();
         </script>

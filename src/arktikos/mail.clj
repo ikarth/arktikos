@@ -17,10 +17,12 @@
 ;;; Configuration
 ;;;
 
+; TODO: change this to something reasonable
 (defconfig my-config (io/resource "config/config_testing.edn"))
 
 (def gmail-username (get (my-config) :gmail-username))
 (def gmail-password (get (my-config) :gmail-password))
+(def gmail-folder (get (my-config) :gmail-folder))
 
 (defn get-new-redactions []
   (apply merge
@@ -190,7 +192,7 @@
   (clojure.pprint/pprint "accessing remote mail...")
   (map process-remote-message
         (clojure-mail.core/with-store (clojure-mail.core/gen-store gmail-username gmail-password)
-         (.getMessages (my-open-folder "Callisto/Colony/Letters/Missives" :readonly))
+         (.getMessages (my-open-folder gmail-folder :readonly))
                   )))
 
 (defn remote-mail

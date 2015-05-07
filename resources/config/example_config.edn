@@ -1,5 +1,6 @@
 {:gmail-username "you@gmail.com"
  :gmail-password "yourpassword"
+ :gmail-folder "Callisto/Colony/Letters/Missives"
  :redactions {"you@gmail.com" "moderator"
               "other@player.com" "Other Player"}
  }

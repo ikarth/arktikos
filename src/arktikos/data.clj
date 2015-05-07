@@ -166,12 +166,14 @@
 (defn mail-to-data
   "Takes the messages and translates them into an array for JSON export."
   [msgs indexed-nodes]
-  (map (fn [msg] {:messageId (:mail/id msg)
+  (map (fn [msg] {:messageId (hash (:mail/id msg))
                   :date (:mail/date-sent msg)
                 :from (:mail/from msg)
                 :to (:mail/reception-list msg)
                 :subject (:mail/subject msg)
-                :senderId (get indexed-nodes (:mail/from msg) 0)})
+                :senderId (get indexed-nodes (:mail/from msg) 0)
+                :targetIds (map #(get indexed-nodes %1 0) (:mail/reception-list msg))
+                  })
      msgs)
   )
 

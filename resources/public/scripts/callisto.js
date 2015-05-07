@@ -41,32 +41,41 @@ function filterLinks(d) {
   return  ((playerState[d.s] == 0) && (playerState[d.t] == 0));
 }
 
+//
+// Filtering links by date/sender/player
+//
 
+function filterByDate(d) {
+  return (d.date >= getFocusArea()[0]) && (d.date <= getFocusArea()[1]);
+}
+
+function filterBySenderId(d) {
+  return playerState[d.senderId] == 0;
+}
+
+function filterByPlayer(d) {
+  return playerState[d.senderId] == 0;
+}
+
+function filterData(d) {
+  return filterByDate(d);
+}
+
+function filterMessageByPlayer(d) {
+  var targetsAwake = d.targetIds.reduce(function(prev, cur, i, a) {
+    if (playerState[cur] == 0) {
+      return prev + 1;
+    }
+    return prev;
+  }, 0);
+  return ((playerState[d.senderId] == 0) &&
+          (targetsAwake > 0));
+}
 
 
 //
-// Time Slider Functions
+// Sort data
 //
-
-
-function getMessageId(m) {
-  return m.messageId;
-}
-
-var updateOnSlider = [];
-
-var focusArea = [0, 0];
-
-function setFocusArea(extent) {
-  focusArea = [extent[0], extent[1]];
-  updateOnSlider.forEach(function(f) {
-    f();
-  });
-}
-
-function getFocusArea() {
-  return focusArea;
-}
 
 function sortData(sdata) {
     sdata.forEach(function(d) {
@@ -101,32 +110,162 @@ function sortDateCount(dcdata) {
   return dcdata;
 }
 
-// Filtering
 
 
-function filterByDate(d) {
-  return (d.date >= getFocusArea()[0]) && (d.date <= getFocusArea()[1]);
+//
+// Time Slider Functions
+//
+
+
+function getMessageId(m) {
+  return m.messageId;
 }
 
-function filterBySenderId(d) {
-  return playerState[d.senderId] == 0;
+var updateOnSlider = [];
+
+var focusArea = [0, 0];
+
+function setFocusArea(extent) {
+  focusArea = [extent[0], extent[1]];
+  updateOnSlider.forEach(function(f) {
+    f();
+  });
 }
 
-function filterByPlayer(d) {
-  return playerState[d.senderId] == 0;
+function getFocusArea() {
+  return focusArea;
 }
 
-function filterData(d) {
-  return filterByDate(d);
+
+//
+// Custom Tweening
+//
+
+// From http://stackoverflow.com/questions/21813723/change-and-transition-dataset-in-chord-diagram-with-d3
+
+// TODO: clean up this hack
+  var arcwidth = 450,
+      archeight = 450,
+      arcinnerRadius = Math.min(arcwidth, archeight) * .41,
+      arcouterRadius = arcinnerRadius * 1.1;
+
+//create the arc path data generator for the groups
+var arc = d3.svg.arc()
+    .innerRadius(arcinnerRadius)
+    .outerRadius(arcouterRadius);
+
+//create the chord path data generator for the chords
+var path = d3.svg.chord()
+    .radius(arcinnerRadius);
+
+function arcTween(oldLayout) {
+    //this function will be called once per update cycle
+
+    //Create a key:value version of the old layout's groups array
+    //so we can easily find the matching group
+    //even if the group index values don't match the array index
+    //(because of sorting)
+    var oldGroups = {};
+    if (oldLayout) {
+        oldLayout.groups().forEach( function(groupData) {
+            oldGroups[ groupData.index ] = groupData;
+        });
+    }
+
+    return function (d, i) {
+        var tween;
+        var old = oldGroups[d.index];
+        if (old) { //there's a matching old group
+            tween = d3.interpolate(old, d);
+        }
+        else {
+            //create a zero-width arc object
+            var emptyArc = {startAngle:d.startAngle,
+                            endAngle:d.startAngle};
+            tween = d3.interpolate(emptyArc, d);
+        }
+
+        return function (t) {
+            return arc( tween(t) );
+        };
+    };
 }
+
+function chordKey(data) {
+  return (data.source.index < data.target.index) ?
+    data.source.index + "." + data.target.index:
+    data.target.index + "." + data.source.index;
+}
+function chordTween(oldLayout) {
+    //this function will be called once per update cycle
+
+    //Create a key:value version of the old layout's chords array
+    //so we can easily find the matching chord
+    //(which may not have a matching index)
+
+    var oldChords = {};
+
+    if (oldLayout) {
+        oldLayout.chords().forEach( function(chordData) {
+            oldChords[ chordKey(chordData) ] = chordData;
+        });
+    }
+
+    return function (d, i) {
+        //this function will be called for each active chord
+
+        var tween;
+        var old = oldChords[ chordKey(d) ];
+        if (old) {
+            //old is not undefined, i.e.
+            //there is a matching old chord value
+
+            //check whether source and target have been switched:
+            if (d.source.index != old.source.index ){
+                //swap source and target to match the new data
+                old = {
+                    source: old.target,
+                    target: old.source
+                };
+            }
+
+            tween = d3.interpolate(old, d);
+        }
+        else {
+            //create a zero-width chord object
+            var emptyChord = {
+                source: { startAngle: d.source.startAngle,
+                         endAngle: d.source.startAngle},
+                target: { startAngle: d.target.startAngle,
+                         endAngle: d.target.startAngle}
+            };
+            tween = d3.interpolate( emptyChord, d );
+        }
+
+        return function (t) {
+            //this function calculates the intermediary shapes
+            return path(tween(t));
+        };
+    };
+}
+
+///////////////////////////////////
+//
+// Drawing individual graphs
+//
+//////////////////////////////////
+
+//
+// Timeline
+//
 
 function drawTimeline() {
-  var width = 860, height = 15;
+  var width = 850, height = 15;
 
   var x = d3.time.scale().range([0,width]);
   var y = d3.scale.linear().range([height,0]);
 
-  var timechart = d3.select("body").append("svg")
+  var timechart = d3.select("#timeline-box").append("svg")
   .attr("width", width)
   .attr("height", height)
   .attr("class", "timeline");
@@ -230,9 +369,6 @@ function drawTimeline() {
         }
       }
 
-
-
-
       setFocusArea([extent1[0], extent1[1]]);
       d3.select(this).call(brush.extent(extent1));
     }
@@ -255,20 +391,27 @@ function drawTimeline() {
 }
 
 
+//
+// Time Chart
+//
+
 function drawTimeChart() {
   var tip = d3.tip().attr("class", "d3-tip")
   .html(function(d) {
     return d.from + "<br>" + d.subject + "<br>" + d.date;
   });
 
-  var width = 860, height = 350;
+  var width = 850, height = 350;
 
   var x = d3.time.scale().range([0,width]);
   var y = d3.scale.linear().range([height,0]);
 
-  var svg = d3.select("body").append("svg")
+  //d3.select("#timeline-box").attr("width", width);
+
+  var svg = d3.select("#timeline-box").append("svg")
   .attr("width", width)
   .attr("height", height)
+  .style("display", "block")
   .attr("class", "container");
 
   var timechart = svg.append("g")
@@ -424,7 +567,7 @@ function drawMessageList() {
 function drawPlayerList() {
   //var color = d3.scale.category20();
 
-  var playerList = d3.select("body")
+  var playerList = d3.select("#player-list-box")
   .append("div")
   .attr("class", "data-list")
   .append("ul")
@@ -488,7 +631,7 @@ function drawNodeGraph() {
                     return d.name;
                   });
 
-  var nodeGraph = d3.select("body").append("svg")
+  var nodeGraph = d3.select("#graph-box").append("svg")
   .attr("width", width)
   .attr("height", height)
   .attr("class","nodegraph");
@@ -557,7 +700,7 @@ function drawNodeGraph() {
     }
 
     updateNodes();
-     playerStateCallbacks.push(updateNodes);
+    playerStateCallbacks.push(updateNodes);
     playerStateCallbacks.push(nodeTip.hide);
   });
 }
@@ -582,7 +725,7 @@ function drawNodeGraphWithCurves() {
     .symmetricDiffLinkLengths(15)
     .size([width,height]);
 
-  var nodeGraph = d3.select("body").append("svg")
+  var nodeGraph = d3.select("#graph-box").append("svg")
   .attr("width", width)
   .attr("height", height)
   .attr("class","nodegraph");
@@ -650,18 +793,21 @@ function drawNodeGraphWithCurves() {
   d3.select("p").text("Replace");
 }
 
+//
+// Chord Graph
+//
 
 function drawChordGraph() {
 
   var width = 450,
-    height = 450,
-    innerRadius = Math.min(width, height) * .41,
-    outerRadius = innerRadius * 1.1;
+      height = 450,
+      innerRadius = Math.min(width, height) * .41,
+      outerRadius = innerRadius * 1.1;
 
-  var svg = d3.select("body").append("svg")
+  var svg = d3.select("#graph-box").append("svg")
     .attr("width", width)
-    .attr("height", height)
-    .append("g")
+    .attr("height", height);
+  var g = svg.append("g")
     .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
 
   var dataMatrix = [];
@@ -672,63 +818,169 @@ function drawChordGraph() {
 
   function getDefaultLayout() {
     return d3.layout.chord()
-    .padding(0.03)
+    .padding(0.01)
     .sortSubgroups(d3.descending)
     .sortChords(d3.ascending);
   }
-  var last_layout;
+
+
+
+  var layout = getDefaultLayout();
+  var last_layout = getDefaultLayout();
+
+  var graph = [];
 
   function updateChords() {
     // assemble data matrix
-    d3.json(dataSource, function(error, graph) {
-      nodes = graph.nodes;
-      links = graph.links;
-      messages = graph.data;
-      bydates = graph.dates;
+    nodes = graph.nodes;
+    links = graph.links;
+    messages = sortData(graph.data);
+    var filteredMessages = messages.filter(filterData);
+    bydates = graph.dates;
 
-      nodes.forEach(function(d) {
-        d.id = +d.index;
+    nodes.forEach(function(d) {
+      d.id = +d.index;
+    });
+    links.forEach(function(d){
+      d.s = +d.source;
+      d.t = +d.target;
+      d.id = d.s + ( d.t * graph.nodes.length * 10);
+      d.index = d.id;
+      d.count = d.value;
+      var msgs = filteredMessages.filter(function(m){
+        return (
+          (playerState[d.s] == 0) &&
+          (playerState[d.t] == 0) &&
+          (m.senderId == d.s) &&
+          (m.targetIds.some(function(s) { return s == d.target; }))
+        );
       });
-      links.forEach(function(d){
-        d.s = +d.source;
-        d.t = +d.target;
-        d.id = d.s + ( d.t * graph.nodes.length * 10);
-        d.count = 0;
-        var msgs = messages.filter(function(d){
-
-        });
-      });
-      messages.forEach(function(d){
-
-      });
-      console.log(links);
-
-      // Create Matrix
-
-
-      // Assign Matrix to layout
-
-      //layout = getDefaultLayout();
-      //layout.matrix(matrix);
-
+      //d.msgs = msgs;
+      d.count = msgs.length;
     });
 
+    //console.log(links);
+
+    // Create Matrix
+
+    // Create the basic matrix: all nodes vs. all nodes, with a value of 0.
+    dataMatrix = [];
+    nodes.forEach(function(d) {
+      dataMatrix.push(nodes.map(function(t) {
+        return 0;
+      }));
+    });
+
+    // Fill zero-basis data matrix with values from links
+    links.forEach(function(d) {
+      dataMatrix[d.source][d.target] = d.count; // sent mail
+      //dataMatrix[d.target][d.source] = d.value; // received mail
+    });
+
+    // Translate message counts for this time range to values in the matrix
+
+
+    // Assign Matrix to layout
+    layout = getDefaultLayout();
+    layout.matrix(dataMatrix);
+
+    // Data join chain
+    var groupG = g.selectAll("g.group")
+    .data(layout.groups(), function(d) {
+      return d.index;
+    });
+
+    var chordPaths = g.selectAll("path.chord")
+    .data(layout.chords(), chordKey );
+
+
+    // Enter chain
+    var newGroups = groupG.enter().append("g")
+    .attr("class","group");
+
+    //newGroups.append("title");
+
+    // Add arcs
+    newGroups.append("path")
+    .attr("id", function(d) {
+      return "group"+d.index;
+    })
+    .style("fill", function(d) {
+      return color(d.index);
+    })
+    .style("stroke", function(d) { return "#7F7F7F"; });
+
+
+    // Add chords
+    var newChords = chordPaths.enter()
+    .append("path")
+    .attr("class","chord")
+    .style("opacity", 0.7)
+    .style("fill", function(d) {
+      return color(d.source.index);
+    })
+    //.style("stroke", function(d) { return "#7F7F7F"; })
+    ;
+
+
+    // Update chain
+
+    groupG.select("path")
+    .transition()
+    .duration(750)
+    .attrTween("d", arcTween( last_layout ))
+    ;
+
+
+    chordPaths.transition()
+    .duration(750)
+    .style("fill", function(d){
+      return color(d.source.index);
+    })
+    .attrTween("d", chordTween(last_layout))
+    ;
+
+
+    // Exit chain
+    groupG.exit()
+    .transition()
+    .duration(350)
+    .attr("opacity", 0)
+    .remove();
+
+    chordPaths.exit()
+    .transition()
+    .duration(350)
+    .attr("opacity", 0)
+    .remove();
+
+
+    last_layout = layout;
   }
-  updateChords();
 
-
+  function updateChordData() {
+    d3.json(dataSource, function(error, graphData) {
+      if (error) { alert("Error reading data: ", error.statusText); return; }
+      graph = graphData;
+      updateChords();
+    });
+  }
+  updateChordData();
+  //updateChordData();
+  updateOnSlider.push(updateChordData);
+  playerStateCallbacks.push(updateChordData);
 }
 
 
-/*
-function drawChordGraph() {
+
+function drawChordGraphStatic() {
 
   var width = 450,
     height = 450,
     innerRadius = Math.min(width, height) * .41,
     outerRadius = innerRadius * 1.1;
 
-    var svg = d3.select("body").append("svg")
+    var svg = d3.select("#graph-box").append("svg")
     .attr("width", width)
     .attr("height", height)
     .append("g")
@@ -847,4 +1099,4 @@ function drawChordGraph() {
 
 }
 
-*/
+

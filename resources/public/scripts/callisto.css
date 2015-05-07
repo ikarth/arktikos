@@ -1,3 +1,7 @@
+html {
+  font-family: 'Raleway', sans-serif;
+}
+
 .node {
   stroke: #ffffff;
   stroke-width: 1.5px;
@@ -33,9 +37,18 @@
   font-size:0.8em;
 }
 
+#player-list-box {
+  display: inline-block;
+  vertical-align:top;
+}
+#graph-box {
+  width:900px;
+  display:inline-block;
+}
+
 ul.data-list a {
   min-height: 2em;
-  min-width: 8em;
+  min-width: 6em;
   diplay: block;
   overflow: visible;
   width: 100%;
@@ -44,7 +57,7 @@ ul.data-list a {
 }
 
 div.data-list {
-  max-width: 40em;
+  max-width: 30em;
   max-height: 800px;
   display:inline-block;
   overflow:hidden;
@@ -63,7 +76,7 @@ ul.data-list li {
   padding:auto;
   overflow: visible;
   min-height: 2em;
-  min-width: 15em;
+  min-width: 5em;
   diplay: block;
   padding:0px;
   list-style: none inside none;
@@ -81,6 +94,11 @@ ul.data-list li:active {
 }
 
 .chord path {
+  fill-opacity: .67;
+  stroke: #000;
+  stroke-width: .5px;
+}
+path.chord {
   fill-opacity: .67;
   stroke: #000;
   stroke-width: .5px;
