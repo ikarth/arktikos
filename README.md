@@ -7,6 +7,10 @@ Arktikos is in a very alpha state right now, but despite what the Bothans told y
 ### About the name
 "Arktikos", meaning "near the bear", the root word for "Artic". Arktikos is in the region of Callisto.
 
+## Live Demo
+
+[http://callisto.isaackarth.com/arktikos/]
+
 ## Prerequisites
 
 You will need [Leiningen][] 2.0.0 or above installed.
