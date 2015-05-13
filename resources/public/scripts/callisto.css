@@ -83,6 +83,7 @@ ul.data-list li {
   text-align: center;
   vertical-align:middle;
   border-radius: 0.5em;
+  font-size:small;
 }
 
 ul.data-list li:hover {

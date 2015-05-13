@@ -20,11 +20,12 @@ var playerState = [];
 var maxPlayerStates = 2;
 var playerStateCallbacks = [];
 
-d3.json(dataSource, function(error, data) {
-  data.nodes.forEach(function(d){
-    playerState[d.index] = 0;
-  });
-});
+var initialized_player_state = false;
+
+var max_nodes = 52;
+for (var init = 0; init < max_nodes; init++) {
+  playerState[init] = 0;
+}
 
 function togglePlayerState(index) {
   playerState[index] = (playerState[index] + 1)  % maxPlayerStates;
@@ -125,26 +126,31 @@ var updateOnSlider = [];
 
 var focusArea = [0, 0];
 
+var update_on_slider_count = 0;
+
 function setFocusArea(extent) {
   focusArea = [extent[0], extent[1]];
   updateOnSlider.forEach(function(f) {
     f();
   });
+  update_on_slider_count++;
+  //console.log(update_on_slider_count);
 }
 
 function getFocusArea() {
   return focusArea;
 }
 
-
+/////////////////////////////////////////////
 //
 // Custom Tweening
 //
-
 // From http://stackoverflow.com/questions/21813723/change-and-transition-dataset-in-chord-diagram-with-d3
+//
+/////////////////////////////////////////////
 
-// TODO: clean up this hack
-  var arcwidth = 450,
+// TODO: clean up this hack - assumes chord graph is 450x450
+  var arcwidth = 450, // graph size - replace with variables...
       archeight = 450,
       arcinnerRadius = Math.min(arcwidth, archeight) * .41,
       arcouterRadius = arcinnerRadius * 1.1;
@@ -249,6 +255,72 @@ function chordTween(oldLayout) {
     };
 }
 
+///////////////////////////////////////////////////////////////////////
+//
+// Data
+//
+///////////////////////////////////////////////////////////////////////
+
+// Global data storage
+// TODO: store in a common structure?
+
+var dataSortedData;
+
+var dataFirstDate;
+var dataLastDate;
+
+var dataMaxOrder = 0;
+
+var dataTimelineData = [];
+
+// Let's have the data updating in one unified place...
+
+var dataUpdateCallbacks = [];
+
+function updateSourceData() {
+  d3.json(dataSource, function(error, data) {
+
+    // fill player state data...
+    if(!initialized_player_state) {
+      data.nodes.forEach(function(d){
+        playerState[d.index] = 0;
+      });
+      initialized_player_state = true;
+    }
+
+    // Sort the message data
+    dataSortedData = sortData(data.data);
+
+    // calculate the dates for the data range
+    dataFirstDate = d3.time.day.floor(dataSortedData[0].date);
+    dataLastDate = d3.time.day.ceil(dataSortedData[data.data.length - 1].date);
+    var curDate = dataFirstDate;
+    dataMaxOrder = 0;
+    var orderInc = 0;
+
+    //Populate the timeline data with entries for each date...
+    dataTimelineData = [];
+    dataSortedData.forEach(function(d, i) {
+      if (d3.time.day(curDate) < d3.time.day(d.date)) {
+        dataTimelineData.push({v: orderInc, date: curDate});
+        orderInc = 0;
+        curDate = d3.time.day(d.date);
+      }
+      d.order = d.order + orderInc;
+      orderInc = orderInc + 1;
+      dataMaxOrder = Math.max(dataMaxOrder, orderInc);
+    });
+    dataTimelineData.push({v: orderInc, date: curDate});
+    dataTimelineData.sort(function(a, b){ return a.date - b.date; });
+
+    dataUpdateCallbacks.forEach(function(f) {
+    f();
+    });
+  });
+}
+
+
+
 ///////////////////////////////////
 //
 // Drawing individual graphs
@@ -270,84 +342,20 @@ function drawTimeline() {
   .attr("height", height)
   .attr("class", "timeline");
 
-
-  d3.json(dataSource, function(error, data) {
-
-    var sortedData = sortData(data.data);
-
-    var firstDate = d3.time.day.floor(sortedData[0].date);
-    var lastDate = d3.time.day.ceil(sortedData[data.data.length - 1].date);
-    var curDate = firstDate;
-    var maxOrder = 0;
-    var orderInc = 0;
-
-    var timelineData = [];
-
-    sortedData.forEach(function(d, i) {
-      if (d3.time.day(curDate) < d3.time.day(d.date)) {
-        //console.log(orderInc);
-        timelineData.push({v: orderInc, date: curDate});
-        orderInc = 0;
-        curDate = d3.time.day(d.date);
-      }
-      d.order = d.order + orderInc;
-      orderInc = orderInc + 1;
-      maxOrder = Math.max(maxOrder, orderInc);
-    });
-    timelineData.push({v: orderInc, date: curDate});
-    timelineData.sort(function(a, b){ return a.date - b.date; });
-
-    //console.log(timelineData);
-
-    var timeExtent = d3.extent(timelineData, function(d) { return d3.time.day(d.date); });
-    timeExtent[1].setDate(timeExtent[1].getDate() + 1);
-
-    x = d3.time.scale()
-    .domain(timeExtent)
-    .range([0,width]);
-
-    y.domain([0, maxOrder]);
-
-    var lastDatePlusOne = new Date(x.domain()[1]);
-    lastDatePlusOne.setDate(lastDatePlusOne.getDate());
-    var buckets = d3.time.days(x.domain()[0], x.domain()[1]);
-    var cellWidth = d3.scale.ordinal().domain(buckets).rangeRoundBands(x.range(), 0.01).rangeBand();
-
-    var cellHeight = Math.max(0, height / Math.max(maxOrder, 1));
-
-    var showTimeTicks = true;
-
-    if(showTimeTicks) {
-
-      var timeTick = timechart.selectAll("rect")
-      .data(timelineData);
-
-      timeTick.enter().append("rect")
-      .attr("x", function(d) { return x(d.date); })
-      .attr("y", function(d) {return height - (d.v * cellHeight);})
-      .attr("height", function(d) {return d.v * cellHeight;})
-      .attr("width", cellWidth)
-      .style("fill", "#6677cc")
-          .append("title")
-        .text(function(d) { return (d.date + " " + d.v); })
-    ;
-
-
-    } else {
-      var cell = timechart.selectAll("g")
-      .data(data.data).enter().append("g");
-
-      cell.append("rect")
-      .attr("x", function(d) { return x(d3.time.day(d.date)); })
-      .attr("y", function(d) {return height - (d.order * cellHeight);})
-      .attr("height", cellHeight)
-      .attr("width", cellWidth)
-      .attr("class", function(d) { return d.from + " message-cell"; })
-      .style("fill", function(d){return d.color;})
+  var brush = d3.svg.brush()
       ;
-    }
 
-    function brushed() {
+  var gTick = timechart.append("g")
+  .attr("class", "tick-group");
+
+  var gBrush = timechart.append("g")
+    .attr("class", "brush");
+
+
+    gBrush.selectAll("rect")
+      .attr("height", height);
+
+  function brushed() {
       var extent0 = brush.extent(),
         extent1;
 
@@ -369,25 +377,68 @@ function drawTimeline() {
         }
       }
 
-      setFocusArea([extent1[0], extent1[1]]);
+      //setFocusArea([extent1[0], extent1[1]]);
       d3.select(this).call(brush.extent(extent1));
     }
 
-    var brush = d3.svg.brush()
-      .x(x)
-      .extent([d3.time.day.floor(firstDate), d3.time.day.ceil(lastDate)])
-      .on("brush",brushed)
-      ;
+  // Only update time chart after dragging stops...
+    function brushEnd() {
+      var extent = brush.extent();
+      setFocusArea(extent);
+    }
 
-    var gBrush = timechart.append("g")
-    .attr("class", "brush")
-    .call(brush);
+  function updateBrushData() {
+
+    brush
+      .x(x)
+      .extent([d3.time.day.floor(dataFirstDate), d3.time.day.ceil(dataLastDate)])
+      .on("brush", brushed)
+      .on("brushend",brushEnd);
+
+    gBrush.call(brush);
 
     gBrush.selectAll("rect")
       .attr("height", height);
 
+  }
 
-  });
+  function updateTimelineData() {
+
+    var timeExtent = [];
+    timeExtent = d3.extent(dataTimelineData, function(d) { return d3.time.day(d.date); });
+    timeExtent[1].setDate(timeExtent[1].getDate() + 1);
+
+    x = d3.time.scale()
+    .domain(timeExtent)
+    .range([0,width]);
+
+    y.domain([0, dataMaxOrder]);
+
+    var lastDatePlusOne = new Date(x.domain()[1]);
+    lastDatePlusOne.setDate(lastDatePlusOne.getDate());
+    var buckets = d3.time.days(x.domain()[0], x.domain()[1]);
+    var cellWidth = d3.scale.ordinal().domain(buckets).rangeRoundBands(x.range(), 0.01).rangeBand();
+
+    var cellHeight = Math.max(0, height / Math.max(dataMaxOrder, 1));
+
+      var timeTick = gTick.selectAll("rect")
+      .data(dataTimelineData);
+
+      timeTick.enter().append("rect")
+      .attr("x", function(d) { return x(d.date); })
+      .attr("y", function(d) {return height - (d.v * cellHeight);})
+      .attr("height", function(d) {return d.v * cellHeight;})
+      .attr("width", cellWidth)
+      .style("fill", "#6677cc")
+          .append("title")
+        .text(function(d) { return (d.date + " " + d.v); });
+
+    updateBrushData();
+    brushEnd();
+  }
+
+  dataUpdateCallbacks.push(updateTimelineData);
+  //dataUpdateCallbacks.push(updateBrushData);
 }
 
 
@@ -422,26 +473,8 @@ function drawTimeChart() {
 
   timechart.call(tip);
 
-  d3.json(dataSource, function(error, data) {
-
-    var sortedData = sortData(data.data);
-
-    var firstDate = d3.time.day.floor(sortedData[0].date);
-    var lastDate = d3.time.day.ceil(sortedData[data.data.length - 1].date);
-    var curDate = d3.time.day(firstDate);
-    var maxOrder = 0;
-    var orderInc = 0;
-    sortedData.forEach(function(d, i) {
-      if (d3.time.day(curDate) < d3.time.day(d.date)) {
-        orderInc = 0;
-        curDate = d3.time.day.floor(d.date);
-      }
-      d.order = d.order + orderInc;
-      orderInc = orderInc + 1;
-      maxOrder = Math.max(maxOrder, orderInc);
-    });
-
-    var timeExtent = d3.extent(sortedData, function(d) { return d3.time.day(d.date); });
+  function updateTimechartData() {
+    var timeExtent = d3.extent(dataSortedData, function(d) { return d3.time.day(d.date); });
     timeExtent[1].setDate(timeExtent[1].getDate() + 1);
     setFocusArea(timeExtent);
 
@@ -449,17 +482,17 @@ function drawTimeChart() {
     .domain(timeExtent)
     .range([0,width]);
 
-    y.domain([0, maxOrder]);
+    y.domain([0, dataMaxOrder]);
 
     var lastDatePlusOne = new Date(x.domain()[1]);
     lastDatePlusOne.setDate(lastDatePlusOne.getDate());
     var buckets = d3.time.days(x.domain()[0], x.domain()[1]);
     var cellWidth = d3.scale.ordinal().domain(buckets).rangeRoundBands(x.range(), 0.0).rangeBand();
 
-    var cellHeight = Math.max(5, height / Math.max(maxOrder, 1));
+    var cellHeight = Math.max(5, height / Math.max(dataMaxOrder, 1));
 
     var cell = timechart.selectAll("rect")
-         .data(sortedData, getMessageId).enter().append("rect")
+         .data(dataSortedData, getMessageId).enter().append("rect")
     .attr("x", function(d) { return x(d3.time.day(d.date)); })
     .attr("y", function(d) {return height - (d.order * cellHeight);})
     .attr("height", cellHeight)
@@ -468,34 +501,6 @@ function drawTimeChart() {
     .style("fill", function(d){return color(d.senderId);})
     .on("mouseover", tip.show)
     .on("mouseout", tip.hide);
-
-    // Hide data...
-    /*
-    updateOnSlider.push(function() {
-      var filteredData = sortedData
-      .filter(filterData);
-
-      var cells = timechart
-      .selectAll("rect").data(filteredData, getMessageId);
-
-      cells.exit()
-      .style("fill", "#FF4433");
-
-      cells.exit().remove();
-
-      cells.enter()
-      .append("rect")
-      .attr("x", function(d) { return x(d3.time.day(d.date)); })
-      .attr("y", function(d) {return height - (d.order * cellHeight);})
-      .attr("height", cellHeight)
-      .attr("width", cellWidth)
-      .attr("class", function(d) { return d.from + " message-cell"; })
-      .style("fill", function(d) {return color(d.senderId);})
-      .on("mouseover", tip.show)
-      .on("mouseout", tip.hide);
-    });
-    */
-
 
     updateOnSlider.push(function() {
       x = d3.time.scale().domain(getFocusArea()).range([0,width]);
@@ -509,7 +514,8 @@ function drawTimeChart() {
         .attr("x", function(d) { return x(d3.time.day(d.date)); })
         .attr("width", cellWidth);
     });
-  });
+  }
+  dataUpdateCallbacks.push(updateTimechartData);
 }
 
 function drawMessageList() {
@@ -823,8 +829,6 @@ function drawChordGraph() {
     .sortChords(d3.ascending);
   }
 
-
-
   var layout = getDefaultLayout();
   var last_layout = getDefaultLayout();
 
@@ -1099,4 +1103,19 @@ function drawChordGraphStatic() {
 
 }
 
+function setupDataDisplays() {
+  drawPlayerList();
+  drawTimeChart();
+  drawTimeline();
 
+  drawNodeGraph();
+  drawChordGraph();
+  //drawChordGraphStatic();
+  drawMessageList();
+}
+
+
+function drawGraphs() {
+    setupDataDisplays();
+    updateSourceData();
+}
