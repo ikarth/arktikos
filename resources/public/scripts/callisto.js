@@ -264,6 +264,7 @@ function chordTween(oldLayout) {
 // Global data storage
 // TODO: store in a common structure?
 
+var dataRaw;
 var dataSortedData;
 var dataNodeData;
 var dataNodeRaw;
@@ -286,7 +287,7 @@ function updateSourceData() {
   d3.json(dataSource, function(error, data) {
     if (error) { alert("Error reading data: ", error.statusText); return; }
 
-
+    dataRaw = data;
     dataNodeData = data.nodes;
     dataNodeRaw = data.nodes;
     dataLinksData = data.links;
@@ -602,7 +603,6 @@ function drawPlayerList() {
   .attr("class", "data-list");
 
   function updatePlayerListData() {
-    //console.log(data.nodes);
 
     //data.nodes.forEach(function(d){
     //  playerState[d.index] = 0;
@@ -676,8 +676,6 @@ function drawNodeGraph() {
 
     //var links = dataFilteredLinks;
     //var nodes = dataFilteredNodes;
-
-    //console.log(dataLinksData);
 
     var links = dataLinksData.filter(filterLinks);
     var nodes = dataNodeData.filter(filterNodeByPlayer);
@@ -776,8 +774,6 @@ function drawNodeGraphWithCurves() {
       bilinks.push({path: [s, i, t], value: l.value});
     });
 
-    //console.log(bilinks);
-
     d3cola
     .nodes(nodes)
     .links(links)
@@ -856,37 +852,41 @@ function drawChordGraph() {
   var last_layout = getDefaultLayout();
 
   var graph = [];
+  var matrix_initialized = false;
+
+  var show_sent_mail = true;
 
   function updateChords() {
     // assemble data matrix
-    nodes = graph.nodes;
-    links = graph.links;
-    messages = sortData(graph.data);
+    if (!matrix_initialized) { return; }
+    nodes = dataNodeData;// graph.nodes;
+    links = dataLinksData;//graph.links;
+    messages = dataSortedData;// sortData(graph.data);
     var filteredMessages = messages.filter(filterData);
     bydates = graph.dates;
 
     nodes.forEach(function(d) {
       d.id = +d.index;
     });
+
     links.forEach(function(d){
-      d.s = +d.source;
-      d.t = +d.target;
-      d.id = d.s + ( d.t * graph.nodes.length * 10);
-      d.index = d.id;
+     // d.s = +d.source;
+     // d.t = +d.target;
+     // d.id = d.s + ( d.t * graph.nodes.length * 10);
+     // d.index = d.id;
       d.count = d.value;
       var msgs = filteredMessages.filter(function(m){
         return (
           (playerState[d.s] == 0) &&
           (playerState[d.t] == 0) &&
           (m.senderId == d.s) &&
-          (m.targetIds.some(function(s) { return s == d.target; }))
+          (m.targetIds.some(function(s) { return s == d.target.id; }))
         );
       });
-      //d.msgs = msgs;
-      d.count = msgs.length;
-    });
+      d.msgs = msgs.length;
+      //d.count = msgs.length;
 
-    //console.log(links);
+    });
 
     // Create Matrix
 
@@ -900,8 +900,11 @@ function drawChordGraph() {
 
     // Fill zero-basis data matrix with values from links
     links.forEach(function(d) {
-      dataMatrix[d.source][d.target] = d.count; // sent mail
-      //dataMatrix[d.target][d.source] = d.value; // received mail
+      if(show_sent_mail) {
+        dataMatrix[d.s][d.t] = d.msgs; // sent mail
+      } else {
+        dataMatrix[d.t][d.s] = d.msgs; // received mail
+      }
     });
 
     // Translate message counts for this time range to values in the matrix
@@ -919,7 +922,6 @@ function drawChordGraph() {
 
     var chordPaths = g.selectAll("path.chord")
     .data(layout.chords(), chordKey );
-
 
     // Enter chain
     var newGroups = groupG.enter().append("g")
@@ -986,13 +988,19 @@ function drawChordGraph() {
   }
 
   function updateChordData() {
-    d3.json(dataSource, function(error, graphData) {
-      if (error) { alert("Error reading data: ", error.statusText); return; }
-      graph = graphData;
+    //d3.json(dataSource, function(error, graphData) {
+    //  if (error) { alert("Error reading data: ", error.statusText); return; }
+    //  graph = graphData;
+    //  console.log(dataRaw);
+    //  console.log(graph);
+    //  console.log("------------------------");
+      matrix_initialized = true;
       updateChords();
-    });
+    //});
   }
-  updateChordData();
+  dataUpdateCallbacks.push(updateChordData);
+  dataUpdateCallbacks.push(updateChordData);
+
   //updateChordData();
   updateOnSlider.push(updateChordData);
   playerStateCallbacks.push(updateChordData);
