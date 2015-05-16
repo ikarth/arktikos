@@ -265,6 +265,7 @@ function chordTween(oldLayout) {
 // TODO: store in a common structure?
 
 var dataSortedData;
+var dataNodeData;
 
 var dataFirstDate;
 var dataLastDate;
@@ -279,6 +280,8 @@ var dataUpdateCallbacks = [];
 
 function updateSourceData() {
   d3.json(dataSource, function(error, data) {
+
+    dataNodeData = data.nodes;
 
     // fill player state data...
     if(!initialized_player_state) {
@@ -527,10 +530,6 @@ function drawMessageList() {
     .append("ul")
     .attr("class", "data-list");
 
-  d3.json(dataSource, function(error, data) {
-
-    var sortedData = sortData(data.data);
-
     /*
     var messageEntry = messageList.selectAll("li")
       .data(sortedData, getMessageId)
@@ -543,7 +542,7 @@ function drawMessageList() {
       });*/
 
     function updateMessageListings() {
-      var filteredData = sortedData
+      var filteredData = dataSortedData
       .filter(filterData)
       .filter(filterBySenderId);
 
@@ -563,11 +562,11 @@ function drawMessageList() {
       messageEntry.order();
     }
 
-    updateMessageListings();
+    //updateMessageListings();
 
     updateOnSlider.push(updateMessageListings);
     playerStateCallbacks.push(updateMessageListings);
-  });
+    dataUpdateCallbacks.push(updateMessageListings);
 }
 
 function drawPlayerList() {
@@ -579,7 +578,7 @@ function drawPlayerList() {
   .append("ul")
   .attr("class", "data-list");
 
-  d3.json(dataSource, function(error, data) {
+  function updatePlayerListData() {
     //console.log(data.nodes);
 
     //data.nodes.forEach(function(d){
@@ -587,7 +586,7 @@ function drawPlayerList() {
     //});
 
     var playerEntry = playerList.selectAll("li")
-      .data(data.nodes)
+      .data(dataNodeData)
       .enter()
       .append("li")
       .attr("class", function(d) { return "player-listing " + d.name; })
@@ -596,6 +595,8 @@ function drawPlayerList() {
         return d.name;
       })
     .on("click", function(d){ togglePlayerState(d.index)});
+  }
+
 
     function updatePlayerVisibility() {
       playerList.selectAll("li").filter(function(d){
@@ -605,8 +606,9 @@ function drawPlayerList() {
         return (playerState[d.index] == 0);
       }).style("background-color", function(d) { return color(d.index); });
     }
+
     playerStateCallbacks.push(updatePlayerVisibility);
-  });
+  dataUpdateCallbacks.push(updatePlayerListData);
 
 
 
