@@ -856,6 +856,16 @@ function drawChordGraph() {
 
   var show_sent_mail = true;
 
+  // Returns an event handler for fading a given chord group.
+  function fade(opacity) {
+    return function(g, i) {
+      svg.selectAll("path.chord")
+        .filter(function(d) { return d.source.index != i && d.target.index != i; })
+        .transition()
+        .style("opacity", opacity);
+    };
+  }
+
   function updateChords() {
     // assemble data matrix
     if (!matrix_initialized) { return; }
@@ -937,7 +947,13 @@ function drawChordGraph() {
     .style("fill", function(d) {
       return color(d.index);
     })
-    .style("stroke", function(d) { return "#7F7F7F"; });
+    .style("stroke", function(d) { return "#7F7F7F"; })
+    .on("mouseover", fade(0.1))
+    .on("mouseout", fade(0.7))
+        .append("title")
+        .text(function(d) { return nodes[d.index].name; })
+    ;
+
 
 
     // Add chords
