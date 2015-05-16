@@ -18,7 +18,7 @@
 ;;;
 
 ; TODO: change this to something reasonable
-(defconfig my-config (io/resource "config/config_testing.edn"))
+(defconfig my-config (io/resource "config/config_tower.edn"))
 
 (def gmail-username (get (my-config) :gmail-username))
 (def gmail-password (get (my-config) :gmail-password))
@@ -198,7 +198,7 @@
 (defn remote-mail
   "Get mail from the remote server, return it for data processing.
   Remote complement to (ingest-mail)."
-  ([] (remote-mail "Callisto/Colony/Letters/Missives"))
+  ([] (remote-mail gmail-folder))
   ([folder-name]
   (clojure.pprint/pprint (str "Accessing remote mail: " folder-name))
   (map process-remote-message
