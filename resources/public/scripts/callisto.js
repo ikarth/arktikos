@@ -266,6 +266,10 @@ function chordTween(oldLayout) {
 
 var dataSortedData;
 var dataNodeData;
+var dataNodeRaw;
+var dataLinksData;
+var dataLinksRaw;
+var dataDatesData;
 
 var dataFirstDate;
 var dataLastDate;
@@ -280,8 +284,27 @@ var dataUpdateCallbacks = [];
 
 function updateSourceData() {
   d3.json(dataSource, function(error, data) {
+    if (error) { alert("Error reading data: ", error.statusText); return; }
+
 
     dataNodeData = data.nodes;
+    dataNodeRaw = data.nodes;
+    dataLinksData = data.links;
+    dataLinksRaw = data.links;
+    dataDatesData = data.dates;
+
+    dataNodeData.forEach(function(d){
+      d.id = +d.index;
+
+    });
+    dataLinksData.forEach(function(d){
+      d.s = +d.source;
+      d.t = +d.target;
+      d.id = d.s + ( d.t * data.nodes.length * 10);
+      d.count = d.value;
+      d.index = d.id;
+    });
+
 
     // fill player state data...
     if(!initialized_player_state) {
@@ -590,21 +613,21 @@ function drawPlayerList() {
       .enter()
       .append("li")
       .attr("class", function(d) { return "player-listing " + d.name; })
-      .style("background-color", function(d) { return color(d.index); })
+      .style("background-color", function(d) { return color(d.id); })
       .html(function(d) {
         return d.name;
       })
-    .on("click", function(d){ togglePlayerState(d.index)});
+    .on("click", function(d){ togglePlayerState(d.id)});
   }
 
 
     function updatePlayerVisibility() {
       playerList.selectAll("li").filter(function(d){
-        return (playerState[d.index] != 0);
+        return (playerState[d.id] != 0);
       }).style("background-color", "#332233");
       playerList.selectAll("li").filter(function(d){
-        return (playerState[d.index] == 0);
-      }).style("background-color", function(d) { return color(d.index); });
+        return (playerState[d.id] == 0);
+      }).style("background-color", function(d) { return color(d.id); });
     }
 
     playerStateCallbacks.push(updatePlayerVisibility);
@@ -646,21 +669,19 @@ function drawNodeGraph() {
 
   nodeGraph.call(nodeTip);
 
-  d3.json(dataSource,
-          function(error, graph) {
-    graph.nodes.forEach(function(d) {
-      d.id = +d.index;
-    });
-    graph.links.forEach(function(d){
-      d.s = +d.source;
-      d.t = +d.target;
-      d.id = d.s + ( d.t * graph.nodes.length * 10);
-    });
+  function updateNodes() {
 
-    function updateNodes() {
+    //dataFilteredLinks = dataLinksData.filter(filterLinks);
+    //dataFilteredNodes = dataNodeData.filter(filterNodeByPlayer);
 
-    var links = graph.links.filter(filterLinks);
-    var nodes = graph.nodes.filter(filterNodeByPlayer);
+    //var links = dataFilteredLinks;
+    //var nodes = dataFilteredNodes;
+
+    //console.log(dataLinksData);
+
+    var links = dataLinksData.filter(filterLinks);
+    var nodes = dataNodeData.filter(filterNodeByPlayer);
+
 
     var link = nodeGraph.selectAll(".link").data(links, function(d) { return d.id; });
     var node = nodeGraph.selectAll(".node").data(nodes, function(d) { return d.id; });
@@ -707,10 +728,10 @@ function drawNodeGraph() {
     .start();
     }
 
-    updateNodes();
+    dataUpdateCallbacks.push(updateNodes);
     playerStateCallbacks.push(updateNodes);
     playerStateCallbacks.push(nodeTip.hide);
-  });
+
 }
 
 
