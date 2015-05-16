@@ -19,6 +19,10 @@ You will need [Leiningen][] 2.0.0 or above installed.
 
 ## Running
 
+Create a config.edn file in the resources/config folder.
+
+Edit mail.clj to look for your config file.
+
 To start a web server for the application, run:
 
     lein ring server
