@@ -2,11 +2,11 @@ html {
   font-family: 'Raleway', sans-serif;
 }
 
-.node {
+.ngnode {
   stroke: #ffffff;
   stroke-width: 1.5px;
 }
-.link {
+.nglink {
   stroke: #555555;
   stroke-opacity: 0.5;
   /*stroke-width: 1.5px;*/

@@ -16,30 +16,28 @@ var parseDate = d3.time.format("%Y-%m-%d-%H-%M-%S").parse,
 // Player Toggle Functions
 //
 
-var playerState = [];
-var maxPlayerStates = 2;
+//var playerState = [];
+//var maxPlayerStates = 2;
 var playerStateCallbacks = [];
 
-var initialized_player_state = false;
+//var initialized_player_state = false;
 
-var max_nodes = 20;
-for (var init = 0; init < max_nodes; init++) {
-  playerState[init] = 0;
-}
+//var max_nodes = 20;
+//for (var init = 0; init < max_nodes; init++) {
+//  playerState[init] = 1;
+//}
 
 function togglePlayerState(index) {
-  playerState[index] = (playerState[index] + 1)  % maxPlayerStates;
+  //if(playerState[index] == 0) {
+  //  playerState[index] = 1;
+  //} else {
+  //  playerState[index] = 0;
+  //}
+
+  //playerState[index] = (playerState[index] + 1)  % maxPlayerStates;
   playerStateCallbacks.forEach(function(f) {
     f();
   });
-}
-
-function filterNodeByPlayer(d) {
-  return (playerState[d.id] == 0);
-}
-
-function filterLinks(d) {
-  return  ((playerState[d.s] == 0) && (playerState[d.t] == 0));
 }
 
 //
@@ -49,7 +47,7 @@ function filterLinks(d) {
 function filterByDate(d) {
   return (d.date >= getFocusArea()[0]) && (d.date <= getFocusArea()[1]);
 }
-
+/*
 function filterBySenderId(d) {
   return playerState[d.senderId] == 0;
 }
@@ -57,7 +55,7 @@ function filterBySenderId(d) {
 function filterByPlayer(d) {
   return playerState[d.senderId] == 0;
 }
-
+*/
 function filterData(d) {
   return filterByDate(d);
 }
@@ -127,6 +125,8 @@ var updateOnSlider = [];
 var focusArea = [0, 0];
 
 var update_on_slider_count = 0;
+
+
 
 function setFocusArea(extent) {
   focusArea = [extent[0], extent[1]];
@@ -263,12 +263,9 @@ function chordTween(oldLayout) {
 // Global data storage
 // TODO: store in a common structure?
 
-var dataRaw;
 var dataSortedData;
 var dataNodeData;
-var dataNodeRaw;
 var dataLinksData;
-var dataLinksRaw;
 var dataDatesData;
 
 var dataFirstDate;
@@ -286,15 +283,13 @@ function updateSourceData() {
   d3.json(dataSource, function(error, data) {
     if (error) { alert("Error reading data: ", error.statusText); return; }
 
-    dataRaw = data;
     dataNodeData = data.nodes;
-    dataNodeRaw = data.nodes;
     dataLinksData = data.links;
-    dataLinksRaw = data.links;
     dataDatesData = data.dates;
 
     dataNodeData.forEach(function(d){
       d.id = +d.index;
+      d.playerState = 0;
 
     });
     dataLinksData.forEach(function(d){
@@ -302,17 +297,8 @@ function updateSourceData() {
       d.t = +d.target;
       d.id = d.s + ( d.t * data.nodes.length * 10);
       d.count = d.value;
-      d.index = d.id;
+      //d.index = d.id;
     });
-
-
-    // fill player state data...
-    if(!initialized_player_state) {
-      data.nodes.forEach(function(d){
-        playerState[d.index] = 0;
-      });
-      initialized_player_state = true;
-    }
 
     // Sort the message data
     dataSortedData = sortData(data.data);
@@ -345,6 +331,25 @@ function updateSourceData() {
   });
 }
 
+function filterLinks(d) {
+  if(("source" in d) && ("target" in d)) {
+    var src = d.source;
+    var trg = d.target;
+    if((typeof src === 'object') && (typeof trg === 'object')) {
+      if(("playerState" in src) && ("playerState" in trg)) {
+        return ((0 == d.source.playerState) && (0 == d.target.playerState));
+      } else {
+      }
+    } else {
+      return ((0 == dataNodeData.slice()[src].playerState) && (0 == dataNodeData.slice()[trg].playerState))
+    }
+  }
+  return true;// ((0 == d.source.playerState) && (0 == d.target.playerState));
+}
+
+function filterNodesByPlayer(d) {
+  return (0 == d.playerState);
+}
 
 
 ///////////////////////////////////
@@ -430,8 +435,10 @@ function drawTimeline(width, height) {
 
   function updateTimelineData() {
 
+    var timeline_data = dataTimelineData.slice();
+
     var timeExtent = [];
-    timeExtent = d3.extent(dataTimelineData, function(d) { return d3.time.day(d.date); });
+    timeExtent = d3.extent(timeline_data, function(d) { return d3.time.day(d.date); });
     timeExtent[1].setDate(timeExtent[1].getDate() + 1);
 
     x = d3.time.scale()
@@ -448,7 +455,7 @@ function drawTimeline(width, height) {
     var cellHeight = Math.max(0, height / Math.max(dataMaxOrder, 1));
 
     var timeTick = gTick.selectAll("rect")
-    .data(dataTimelineData);
+    .data(timeline_data);
 
     timeTick.enter().append("rect")
     .attr("x", function(d) { return x(d.date); })
@@ -503,7 +510,10 @@ function drawTimeChart(width, height) {
   timechart.call(tip);
 
   function updateTimechartData() {
-    var timeExtent = d3.extent(dataSortedData, function(d) { return d3.time.day(d.date); });
+
+    var data_timechart = dataSortedData.slice();
+
+    var timeExtent = d3.extent(data_timechart, function(d) { return d3.time.day(d.date); });
     timeExtent[1].setDate(timeExtent[1].getDate() + 1);
     setFocusArea(timeExtent);
 
@@ -521,7 +531,7 @@ function drawTimeChart(width, height) {
     var cellHeight = Math.max(5, height / Math.max(dataMaxOrder, 1));
 
     var cell = timechart.selectAll("rect")
-    .data(dataSortedData, getMessageId).enter().append("rect")
+    .data(data_timechart, getMessageId).enter().append("rect")
     .attr("x", function(d) { return x(d3.time.day(d.date)); })
     .attr("y", function(d) {return height - (d.order * cellHeight);})
     .attr("height", cellHeight)
@@ -568,9 +578,9 @@ function drawMessageList() {
       });*/
 
   function updateMessageListings() {
-    var filteredData = dataSortedData
+    var filteredData = dataSortedData.slice()
     .filter(filterData)
-    .filter(filterBySenderId);
+    .filter(function(d){return 0 == dataNodeData[d.senderId].playerState;});
 
     var messageEntry = messageList.selectAll("li")
     .data(filteredData, getMessageId);
@@ -608,48 +618,53 @@ function drawPlayerList() {
 
 function updatePlayerVisibility() {
     playerList.selectAll("li").filter(function(d){
-      return (playerState[d.id] != 0);
+      return (d.playerState != 0);
     }).style("background-color", "#332233");
     playerList.selectAll("li").filter(function(d){
-      return (playerState[d.id] == 0);
+      return (d.playerState == 0);
     }).style("background-color", function(d) { return color(d.id); });
   playerList.selectAll("li")
   .html(function(d) {
-      return d.name + d.id;
+      return d.name;// + d.id + d.playerState;
     })
 }
 
   function updatePlayerListData() {
 
-    dataNodeData.forEach(function(d){
+    var data_players = owl.deepCopy(dataNodeData);
+
+    //data_players.forEach(function(d){
     //  playerState[d.index] = 0;
-    });
+    //});
 
     var playerEntry = playerList.selectAll("li")
-    .data(dataNodeRaw)
+    .data(data_players, function(d) { return d.id; })
     .enter()
     .append("li")
     .attr("class", function(d) { return "player-listing " + d.id; })
     .style("background-color", function(d) { return color(d.id); })
     .html(function(d) {
-      return d.name + d.id;
+      return d.name;// + d.id;
     })
-    .on("click", function(d){ togglePlayerState(d.id)});
+    .on("click", function(d){
+      //console.log(dataNodeData[d.id]);
+      dataNodeData[d.id].playerState = (0 == dataNodeData[d.id].playerState) ? 1 : 0;
+      //console.log(dataNodeData[d.id]);
+      togglePlayerState(d.id)
+    });
+
+    updatePlayerVisibility();
 
   }
 
 
-  playerStateCallbacks.push(updatePlayerVisibility);
-  //playerStateCallbacks.push(updatePlayerListData);
+  //playerStateCallbacks.push(updatePlayerVisibility);
+  playerStateCallbacks.push(updatePlayerListData);
   dataUpdateCallbacks.push(updatePlayerListData);
-
-
-
-
-
 }
 
 function drawNodeGraph() {
+
   var width = 400, height = 450;
 
   var d3force = d3.layout.force()
@@ -657,7 +672,7 @@ function drawNodeGraph() {
   .linkDistance(80)
   .size([width, height]);
 
-  var d3cola = cola.d3adaptor()
+var d3cola = cola.d3adaptor()
   .linkDistance(50)
   .avoidOverlaps(true)
   .symmetricDiffLinkLengths(25)
@@ -672,7 +687,7 @@ function drawNodeGraph() {
     return d.name;
   });
 
-  var nodeGraph = d3.select("#graph-box").append("svg")
+  var nodeGraph = d3.select("body").append("svg")
   .attr("width", width)
   .attr("height", height)
   .attr("class","nodegraph");
@@ -684,21 +699,21 @@ function drawNodeGraph() {
     //dataFilteredLinks = dataLinksData.filter(filterLinks);
     //dataFilteredNodes = dataNodeData.filter(filterNodeByPlayer);
 
-    //var links = dataFilteredLinks;
-    //var nodes = dataFilteredNodes;
+    var links = owl.deepCopy(dataLinksData);
+    var nodes = owl.deepCopy(dataNodeData);
 
-    var nglinks = dataLinksData.filter(filterLinks);
-    var ngnodes = dataNodeData.filter(filterNodeByPlayer);
+    var nglinks = links.slice().filter(filterLinks);
+    var ngnodes = nodes.slice().filter(filterNodesByPlayer);
 
 
-    var nglink = nodeGraph.selectAll(".link").data(nglinks, function(d) { return d.id; });
-    var ngnode = nodeGraph.selectAll(".node").data(ngnodes, function(d) { return d.id; });
+    nglink = nodeGraph.selectAll(".nglink").data(nglinks, function(d) { return d.id; });
+    ngnode = nodeGraph.selectAll(".ngnode").data(ngnodes, function(d) { return d.id; });
 
     nglink.exit().remove();
 
     nglink
     .enter().append("line")
-    .attr("class", "link")
+    .attr("class", "nglink")
     .style("stroke", function(d) { return color(d.s); })
     .style("stroke-width",
            function(d) { return Math.sqrt(d.value); });
@@ -706,7 +721,8 @@ function drawNodeGraph() {
     ngnode.exit().remove();
 
     ngnode.enter().append("circle")
-    .attr("class", function(d) { return "node " + d.name; })
+    .attr("class", function(d) { return "ngnode"; })
+    .attr("data-index", function(d){ return d.id; })
     .attr("r", 9)
     .style("fill", function(d) { return color(d.id); })
     //.on("click", function (d) {
@@ -731,125 +747,44 @@ function drawNodeGraph() {
     });
 
     force
-    .nodes(ngnodes)
     .links(nglinks)
-    .start();
+    .nodes(ngnodes)
+    .start()
+    ;
+
+    //console.log(dataNodeData);
+    //console.log(ngnodes);
+
   }
 
   dataUpdateCallbacks.push(updateNodes);
-  //playerStateCallbacks.push(updateNodes); // TODO: for some reason this breaks the player node IDs...
+  //playerStateCallbacks.push(updateNodes);
   //playerStateCallbacks.push(nodeTip.hide);
 
-}
-
-
-function drawNodeGraphWithCurves() {
-  var width = 860, height = 500;
-  //var color = d3.scale.category20();
-  var force = d3.layout.force()
-  .charge(-70)
-  .linkDistance(15)
-  .size([width, height]);
-
-  var nodeTip = d3.tip().attr("class", "d3-tip")
-  .html(function(d) {
-    return d.name;
-  });
-
-  var d3cola = cola.d3adaptor()
-  .linkDistance(60)
-  .avoidOverlaps(true)
-  .symmetricDiffLinkLengths(15)
-  .size([width,height]);
-
-  var nodeGraph = d3.select("#graph-box").append("svg")
-  .attr("width", width)
-  .attr("height", height)
-  .attr("class","nodegraph");
-
-  nodeGraph.call(nodeTip);
-
-  d3.json(dataSource,
-          function(error, graph) {
-
-    var nodes = graph.nodes.slice();
-    var links = [];
-    var bilinks = [];
-    graph.links.forEach(function(l) {
-      var s = nodes[l.source];
-      var t = nodes[l.target];
-      var i = {index: s.index};
-      nodes.push(i);
-      links.push({source: s, target: i}, {source: i, target: t});
-      bilinks.push({path: [s, i, t], value: l.value});
-    });
-
-    d3cola
-    .nodes(nodes)
-    .links(links)
-    .start();
-
-    var link = nodeGraph.selectAll(".link")
-    .data(bilinks)
-    .enter().append("path")
-    .attr("class", "link")
-    .style("stroke", function(d) { return color(d.path[0].index); })
-    .style("stroke-width",
-           function(d) { return Math.sqrt(d.value); });
-
-    var node = nodeGraph.selectAll(".node")
-    .data(graph.nodes)
-    .enter().append("circle")
-    .attr("class", "node")
-    .attr("r", 7)
-    .style("fill", function(d) { return color(d.index); })
-    //.on("click", function (d) {
-    //    d.fixed = true;
-    //})
-    .call(d3cola.drag)
-    .on("mouseover", nodeTip.show)
-    .on("mouseout", nodeTip.hide)
-    ;
-
-    //node.append("title")
-    //    .text(function(d) { return d.name; });
-
-    d3cola.on("tick", function() {
-      node.attr("cx", function(d) { return d.x; })
-      .attr("cy", function(d) { return d.y; });
-      link.attr("d", function(d) {
-        return "M " + d.path[0].x + "," + d.path[0].y
-        + "S " + d.path[1].x + "," + d.path[1].y
-        +  " " + d.path[2].x + "," + d.path[2].y;
-      });
-    });
-  });
-
-  d3.select("p").text("Replace");
 }
 
 //
 // Chord Graph
 //
 
-function drawChordGraph() {
+function drawChordGraph(sent_or_received) {
 
   var width = 450,
       height = 450,
       innerRadius = Math.min(width, height) * .41,
       outerRadius = innerRadius * 1.1;
 
-  var svg = d3.select("#graph-box").append("svg")
+  var svg = d3.select("body").append("svg")
   .attr("width", width)
   .attr("height", height);
   var g = svg.append("g")
   .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
 
-  var dataMatrix = [];
-  var nodes = [];
-  var links = [];
-  var messages = [];
-  var bydates = [];
+  //var dataMatrix = [];
+  //var nodes = [];
+  //var links = [];
+  //var messages = [];
+  //var bydates = [];
 
   function getDefaultLayout() {
     return d3.layout.chord()
@@ -865,6 +800,7 @@ function drawChordGraph() {
   var matrix_initialized = false;
 
   var show_sent_mail = true;
+  if(!sent_or_received) { show_sent_mail = false;}
 
   // Returns an event handler for fading a given chord group.
   function fade(opacity) {
@@ -878,12 +814,12 @@ function drawChordGraph() {
 
   function updateChords() {
     // assemble data matrix
-    if (!matrix_initialized) { return; }
-    nodes = dataNodeData;// graph.nodes;
-    links = dataLinksData;//graph.links;
-    messages = dataSortedData;// sortData(graph.data);
+    //if (!matrix_initialized) { return; }
+    var nodes = dataNodeData;//owl.deepCopy(dataNodeData);// graph.nodes;
+    var links = dataLinksData;//owl.deepCopy(dataLinksData);//graph.links;
+    var messages = dataSortedData;//owl.deepCopy(dataSortedData);// sortData(graph.data);
     var filteredMessages = messages.filter(filterData);
-    bydates = graph.dates;
+    var bydates = graph.dates;
 
     nodes.forEach(function(d) {
       d.id = +d.index;
@@ -895,17 +831,18 @@ function drawChordGraph() {
       // d.id = d.s + ( d.t * graph.nodes.length * 10);
       // d.index = d.id;
       d.count = d.value;
+      //console.log(d);
       var msgs = filteredMessages.filter(function(m){
         return (
-          (playerState[d.s] == 0) &&
-          (playerState[d.t] == 0) &&
+          (nodes[d.s].playerState == 0) &&
+          (nodes[d.t].playerState == 0) &&
           (m.senderId == d.s) &&
-          (m.targetIds.some(function(s) { return s == d.target.id; }))
+          (m.targetIds.some(function(s) { return s == d.t; }))
+
         );
       });
       d.msgs = msgs.length;
       //d.count = msgs.length;
-
     });
 
     // Create Matrix
@@ -928,7 +865,6 @@ function drawChordGraph() {
     });
 
     // Translate message counts for this time range to values in the matrix
-
 
     // Assign Matrix to layout
     layout = getDefaultLayout();
@@ -1020,12 +956,12 @@ function drawChordGraph() {
   }
 
   function updateChordData() {
-    matrix_initialized = true;
+    //matrix_initialized = true;
     updateChords();
   }
 
   dataUpdateCallbacks.push(updateChordData);
-  dataUpdateCallbacks.push(updateChordData);
+  //dataUpdateCallbacks.push(updateChordData);
 
   //updateChordData();
   updateOnSlider.push(updateChordData);
@@ -1033,141 +969,23 @@ function drawChordGraph() {
 }
 
 
-
-function drawChordGraphStatic() {
-
-  var width = 450,
-      height = 450,
-      innerRadius = Math.min(width, height) * .41,
-      outerRadius = innerRadius * 1.1;
-
-  var svg = d3.select("#graph-box").append("svg")
-  .attr("width", width)
-  .attr("height", height)
-  .append("g")
-  .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
-
-
-  d3.json(dataSource, function(error, graph) {
-    var nodes = graph.nodes;
-    var links = graph.links;
-
-    var tip = d3.tip().attr("class", "d3-tip")
-    .html(function(d) {
-      return nodes[d.index].name;
-    })
-    tip.offset(function() {
-      return [this.getBBox().height / 2, 0]
-    });
-
-    svg.call(tip);
-
-    var dataMatrix = [];
-    nodes.forEach(function(s) {
-      dataMatrix.push(
-        nodes.map(function(t) { return 0; }));
-    });
-
-    links.forEach(function(d) {
-      dataMatrix[d.source][d.target] = d.value; // sent mail
-      //dataMatrix[d.target][d.source] = d.value; // received mail
-    });
-
-    var chord = d3.layout.chord()
-    .padding(.01)
-    .sortSubgroups(d3.descending)
-    .matrix(dataMatrix);
-
-    svg.append("g").selectAll("path")
-    .data(chord.groups)
-    .enter().append("path")
-    .style("fill", function(d) { return color(d.index); })
-    .style("stroke", function(d) { return color(0); })
-    .attr("d", d3.svg.arc().innerRadius(innerRadius).outerRadius(outerRadius))
-    .attr("class", function(d) { return "arc " + d.name; })
-    //.on("mouseover", tip.show)
-    //.on("mouseout", tip.hide)
-    .on("mouseover", fade(.1))
-    .on("mouseout", fade(1))
-    .on("click", function(d){ togglePlayerState(d.index)})
-    .append("title")
-    .text(function(d) { return nodes[d.index].name; })
-    ;
-
-    var ticks = svg.append("g").selectAll("g")
-    .data(chord.groups)
-    .enter().append("g").selectAll("g")
-    .data(groupTicks)
-    .enter().append("g")
-    .attr("transform", function(d) {
-      return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")"
-      + "translate(" + outerRadius + ",0)";
-    });
-
-    svg.append("g")
-    .attr("class", "chord")
-    .selectAll("path")
-    .data(chord.chords)
-    .enter().append("path")
-    .attr("d", d3.svg.chord().radius(innerRadius))
-    .style("fill", function(d) { return color(d.source.index); })
-    .style("opacity", 0.7);
-
-    ticks.append("line")
-    .attr("x1", 1)
-    .attr("y1", 0)
-    .attr("x2", 5)
-    .attr("y2", 0)
-    .style("stroke", "#000");
-
-    ticks.append("text")
-    .attr("x", 8)
-    .attr("dy", ".35em")
-    .attr("transform", function(d) { return d.angle > Math.PI ? "rotate(180)translate(-16)" : null; })
-    .style("text-anchor", function(d) { return d.angle > Math.PI ? "end" : null; })
-    .text(function(d) { return d.label; });
-
-    // Returns an array of tick angles and labels, given a group.
-    function groupTicks(d) {
-      var k = (d.endAngle - d.startAngle) / d.value;
-      return d3.range(0, d.value, 5).map(function(v, i) {
-        return {
-          angle: v * k + d.startAngle,
-          //label: i % 5 ? null : v / 5 + "k"
-          //label: i % 2 ? null : v + ""
-          //label: nodes[d.index].name
-        };
-      });
-    }
-
-    // Returns an event handler for fading a given chord group.
-    function fade(opacity) {
-      return function(g, i) {
-        svg.selectAll(".chord path")
-        .filter(function(d) { return d.source.index != i && d.target.index != i; })
-        .transition()
-        .style("opacity", opacity);
-      };
-    }
-
-
-  });
-
-}
-
 function setupDataDisplays() {
   drawPlayerList();
   drawTimeChart(550, 350);
   drawTimeline(550, 15);
 
-  drawNodeGraph();
-  drawChordGraph();
   //drawChordGraphStatic();
+  //drawNodeGraphWithCurves();
+
+  drawNodeGraph();
+  drawChordGraph(true);
+  drawChordGraph(false);
   drawMessageList();
 }
 
 
 function drawGraphs() {
   setupDataDisplays();
+  updateSourceData();
   updateSourceData();
 }
