@@ -32,10 +32,6 @@ function togglePlayerState(index) {
   playerStateCallbacks.forEach(function(f) {
     f();
   });
-  console.log("playerState");
-  console.log(index);
-  console.log(playerState);
-  console.log(playerStateCallbacks);
 }
 
 function filterNodeByPlayer(d) {
@@ -138,7 +134,6 @@ function setFocusArea(extent) {
     f();
   });
   update_on_slider_count++;
-  console.log(updateOnSlider);
 }
 
 function getFocusArea() {
@@ -347,8 +342,6 @@ function updateSourceData() {
     dataUpdateCallbacks.forEach(function(f) {
       f();
     });
-    console.log("dataUpdateCallbacks");
-    console.log(dataUpdateCallbacks);
   });
 }
 
@@ -364,8 +357,8 @@ function updateSourceData() {
 // Timeline
 //
 
-function drawTimeline() {
-  var width = 850, height = 15;
+function drawTimeline(width, height) {
+  //var width = 850, height = 15;
 
   var x = d3.time.scale().range([0,width]);
   var y = d3.scale.linear().range([height,0]);
@@ -479,18 +472,21 @@ function drawTimeline() {
 // Time Chart
 //
 
-function drawTimeChart() {
+function drawTimeChart(width, height) {
   var tip = d3.tip().attr("class", "d3-tip")
   .html(function(d) {
     return d.from + "<br>" + d.subject + "<br>" + d.date;
   });
 
-  var width = 850, height = 350;
+  //var width = 850, height = 350;
 
   var x = d3.time.scale().range([0,width]);
   var y = d3.scale.linear().range([height,0]);
 
   //d3.select("#timeline-box").attr("width", width);
+
+  var timebox = d3.select("#graph-box").append("div")
+  .attr("id","timeline-box");
 
   var svg = d3.select("#timeline-box").append("svg")
   .attr("width", width)
@@ -628,8 +624,6 @@ function updatePlayerVisibility() {
     dataNodeData.forEach(function(d){
     //  playerState[d.index] = 0;
     });
-    //console.log("dataNodeData");
-    //console.log(dataNodeData);
 
     var playerEntry = playerList.selectAll("li")
     .data(dataNodeRaw)
@@ -982,7 +976,7 @@ function drawChordGraph() {
     })
     .append("title")
     .text(function(d) {
-      console.log(d); return nodes[d.source.index].name + "(" + d.source.value + ")" +
+      return nodes[d.source.index].name + "(" + d.source.value + ")" +
         (show_sent_mail ? " - " : " - " )
       +  nodes[d.target.index].name  + "(" + d.target.value + ")";
     })
@@ -1026,16 +1020,10 @@ function drawChordGraph() {
   }
 
   function updateChordData() {
-    //d3.json(dataSource, function(error, graphData) {
-    //  if (error) { alert("Error reading data: ", error.statusText); return; }
-    //  graph = graphData;
-    //  console.log(dataRaw);
-    //  console.log(graph);
-    //  console.log("------------------------");
     matrix_initialized = true;
     updateChords();
-    //});
   }
+
   dataUpdateCallbacks.push(updateChordData);
   dataUpdateCallbacks.push(updateChordData);
 
@@ -1085,15 +1073,10 @@ function drawChordGraphStatic() {
       //dataMatrix[d.target][d.source] = d.value; // received mail
     });
 
-    //console.log(dataMatrix);
-    //console.log(links);
-
     var chord = d3.layout.chord()
     .padding(.01)
     .sortSubgroups(d3.descending)
     .matrix(dataMatrix);
-
-    //console.log(chord);
 
     svg.append("g").selectAll("path")
     .data(chord.groups)
@@ -1174,8 +1157,8 @@ function drawChordGraphStatic() {
 
 function setupDataDisplays() {
   drawPlayerList();
-  drawTimeChart();
-  drawTimeline();
+  drawTimeChart(550, 350);
+  drawTimeline(550, 15);
 
   drawNodeGraph();
   drawChordGraph();

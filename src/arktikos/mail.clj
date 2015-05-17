@@ -212,8 +212,8 @@
                   ))))
 
 ;; Cache the fetched mail, because we really don't need real-time updates yet...
-(def cached-remote-mail
-  (clojure.core.memoize/ttl remote-mail {} :ttl/threshold 60))
+;(def cached-remote-mail
+;  (clojure.core.memoize/ttl remote-mail {} :ttl/threshold 60))
 
 
 ;(remote-mail)
