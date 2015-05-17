@@ -758,8 +758,8 @@ var d3cola = cola.d3adaptor()
   }
 
   dataUpdateCallbacks.push(updateNodes);
-  //playerStateCallbacks.push(updateNodes);
-  //playerStateCallbacks.push(nodeTip.hide);
+  playerStateCallbacks.push(updateNodes);
+  playerStateCallbacks.push(nodeTip.hide);
 
 }
 
