@@ -20,9 +20,14 @@
 ; TODO: change this to something reasonable
 (defconfig my-config (io/resource "config/config_tower.edn"))
 
-(def gmail-username (get (my-config) :gmail-username))
-(def gmail-password (get (my-config) :gmail-password))
-(def gmail-folder (get (my-config) :gmail-folder))
+(defn gmail-username []
+  (get (my-config) :gmail-username))
+
+(defn gmail-password []
+  (get (my-config) :gmail-password))
+
+(defn gmail-folder []
+  (get (my-config) :gmail-folder))
 
 (defn get-new-redactions []
   (apply merge
@@ -113,7 +118,7 @@
    ;:mail/html-body (get-html-body m)
    :mail/reception-list ;(strip-moderator
                          (strip-emails
-                          (flatten (conj (cc-list m) (message/to m)))
+                          (flatten (conj (cc-list m) (bcc-list m) (message/to m)))
                           (get-redactions))
                          ;(moderator-name))
    ;:mail/read-message (message/read-message m)
@@ -191,24 +196,24 @@
   []
   (clojure.pprint/pprint "accessing remote mail...")
   (map process-remote-message
-        (clojure-mail.core/with-store (clojure-mail.core/gen-store gmail-username gmail-password)
-         (.getMessages (my-open-folder gmail-folder :readonly))
+        (clojure-mail.core/with-store (clojure-mail.core/gen-store (gmail-username) (gmail-password))
+         (.getMessages (my-open-folder (gmail-folder) :readonly))
                   )))
 
 (defn remote-mail
   "Get mail from the remote server, return it for data processing.
   Remote complement to (ingest-mail)."
-  ([] (remote-mail gmail-folder))
+  ([] (remote-mail (gmail-folder)))
   ([folder-name]
-  (clojure.pprint/pprint (str "Accessing remote mail: " folder-name))
-  (map process-remote-message
-        (clojure-mail.core/with-store (clojure-mail.core/gen-store gmail-username gmail-password)
+    (clojure.pprint/pprint (str "Accessing remote mail: " folder-name))
+    (map process-remote-message
+        (clojure-mail.core/with-store (clojure-mail.core/gen-store (gmail-username) (gmail-password))
          (.getMessages (my-open-folder folder-name :readonly))
                   ))))
 
 ;; Cache the fetched mail, because we really don't need real-time updates yet...
 (def cached-remote-mail
-  (clojure.core.memoize/ttl remote-mail {} :ttl/threshold 6000000))
+  (clojure.core.memoize/ttl remote-mail {} :ttl/threshold 60))
 
 
 ;(remote-mail)

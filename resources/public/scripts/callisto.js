@@ -22,7 +22,7 @@ var playerStateCallbacks = [];
 
 var initialized_player_state = false;
 
-var max_nodes = 52;
+var max_nodes = 20;
 for (var init = 0; init < max_nodes; init++) {
   playerState[init] = 0;
 }
@@ -32,6 +32,10 @@ function togglePlayerState(index) {
   playerStateCallbacks.forEach(function(f) {
     f();
   });
+  console.log("playerState");
+  console.log(index);
+  console.log(playerState);
+  console.log(playerStateCallbacks);
 }
 
 function filterNodeByPlayer(d) {
@@ -134,7 +138,7 @@ function setFocusArea(extent) {
     f();
   });
   update_on_slider_count++;
-  //console.log(update_on_slider_count);
+  console.log(updateOnSlider);
 }
 
 function getFocusArea() {
@@ -343,6 +347,8 @@ function updateSourceData() {
     dataUpdateCallbacks.forEach(function(f) {
       f();
     });
+    console.log("dataUpdateCallbacks");
+    console.log(dataUpdateCallbacks);
   });
 }
 
@@ -593,6 +599,7 @@ function drawMessageList() {
   dataUpdateCallbacks.push(updateMessageListings);
 }
 
+
 function drawPlayerList() {
   //var color = d3.scale.category20();
 
@@ -602,35 +609,44 @@ function drawPlayerList() {
   .append("ul")
   .attr("class", "data-list");
 
-  function updatePlayerListData() {
 
-    //data.nodes.forEach(function(d){
-    //  playerState[d.index] = 0;
-    //});
-
-    var playerEntry = playerList.selectAll("li")
-    .data(dataNodeData)
-    .enter()
-    .append("li")
-    .attr("class", function(d) { return "player-listing " + d.name; })
-    .style("background-color", function(d) { return color(d.id); })
-    .html(function(d) {
-      return d.name;
-    })
-    .on("click", function(d){ togglePlayerState(d.id)});
-  }
-
-
-  function updatePlayerVisibility() {
+function updatePlayerVisibility() {
     playerList.selectAll("li").filter(function(d){
       return (playerState[d.id] != 0);
     }).style("background-color", "#332233");
     playerList.selectAll("li").filter(function(d){
       return (playerState[d.id] == 0);
     }).style("background-color", function(d) { return color(d.id); });
+  playerList.selectAll("li")
+  .html(function(d) {
+      return d.name + d.id;
+    })
+}
+
+  function updatePlayerListData() {
+
+    dataNodeData.forEach(function(d){
+    //  playerState[d.index] = 0;
+    });
+    //console.log("dataNodeData");
+    //console.log(dataNodeData);
+
+    var playerEntry = playerList.selectAll("li")
+    .data(dataNodeRaw)
+    .enter()
+    .append("li")
+    .attr("class", function(d) { return "player-listing " + d.id; })
+    .style("background-color", function(d) { return color(d.id); })
+    .html(function(d) {
+      return d.name + d.id;
+    })
+    .on("click", function(d){ togglePlayerState(d.id)});
+
   }
 
+
   playerStateCallbacks.push(updatePlayerVisibility);
+  //playerStateCallbacks.push(updatePlayerListData);
   dataUpdateCallbacks.push(updatePlayerListData);
 
 
@@ -677,25 +693,25 @@ function drawNodeGraph() {
     //var links = dataFilteredLinks;
     //var nodes = dataFilteredNodes;
 
-    var links = dataLinksData.filter(filterLinks);
-    var nodes = dataNodeData.filter(filterNodeByPlayer);
+    var nglinks = dataLinksData.filter(filterLinks);
+    var ngnodes = dataNodeData.filter(filterNodeByPlayer);
 
 
-    var link = nodeGraph.selectAll(".link").data(links, function(d) { return d.id; });
-    var node = nodeGraph.selectAll(".node").data(nodes, function(d) { return d.id; });
+    var nglink = nodeGraph.selectAll(".link").data(nglinks, function(d) { return d.id; });
+    var ngnode = nodeGraph.selectAll(".node").data(ngnodes, function(d) { return d.id; });
 
-    link.exit().remove();
+    nglink.exit().remove();
 
-    link
+    nglink
     .enter().append("line")
     .attr("class", "link")
     .style("stroke", function(d) { return color(d.s); })
     .style("stroke-width",
            function(d) { return Math.sqrt(d.value); });
 
-    node.exit().remove();
+    ngnode.exit().remove();
 
-    node.enter().append("circle")
+    ngnode.enter().append("circle")
     .attr("class", function(d) { return "node " + d.name; })
     .attr("r", 9)
     .style("fill", function(d) { return color(d.id); })
@@ -711,24 +727,24 @@ function drawNodeGraph() {
     ;
 
     force.on("tick", function () {
-      link.attr("x1", function(d) { return d.source.x; })
+      nglink.attr("x1", function(d) { return d.source.x; })
       .attr("y1", function(d) { return d.source.y; })
       .attr("x2", function(d) { return d.target.x; })
       .attr("y2", function(d) { return d.target.y; });
 
-      node.attr("cx", function(d) { return d.x; })
+      ngnode.attr("cx", function(d) { return d.x; })
       .attr("cy", function(d) { return d.y; });
     });
 
     force
-    .nodes(nodes)
-    .links(links)
+    .nodes(ngnodes)
+    .links(nglinks)
     .start();
   }
 
   dataUpdateCallbacks.push(updateNodes);
-  playerStateCallbacks.push(updateNodes);
-  playerStateCallbacks.push(nodeTip.hide);
+  //playerStateCallbacks.push(updateNodes); // TODO: for some reason this breaks the player node IDs...
+  //playerStateCallbacks.push(nodeTip.hide);
 
 }
 
@@ -951,7 +967,7 @@ function drawChordGraph() {
     .on("mouseover", fade(0.1))
     .on("mouseout", fade(0.7))
     .append("title")
-    .text(function(d) { return nodes[d.index].name; })
+    .text(function(d) { return (nodes[d.index].name); })
     ;
 
 
@@ -963,6 +979,12 @@ function drawChordGraph() {
     .style("opacity", 0.7)
     .style("fill", function(d) {
       return color(d.source.index);
+    })
+    .append("title")
+    .text(function(d) {
+      console.log(d); return nodes[d.source.index].name + "(" + d.source.value + ")" +
+        (show_sent_mail ? " - " : " - " )
+      +  nodes[d.target.index].name  + "(" + d.target.value + ")";
     })
     //.style("stroke", function(d) { return "#7F7F7F"; })
     ;
