@@ -240,7 +240,7 @@
     {:nodes (encode-nodes nodes)
      :links (remove nil? (encode-edges nodes edges eweights))
      :data (mail-to-data msgs (index-nodes nodes))
-     :dates (encode-mail-per-date msgs nodes)
+     ;:dates (encode-mail-per-date msgs nodes)
      }))
 
 (defn export-mail [msgs destination]
