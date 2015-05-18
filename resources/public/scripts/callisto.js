@@ -684,7 +684,7 @@ function updatePlayerVisibility() {
     }).style("background-color", function(d) { return color(d.id); });
   playerList.selectAll("li")
   .html(function(d) {
-      return d.name + d.id + d.playerState;
+      return d.name;// + d.id + d.playerState;
     })
 }
 
@@ -1067,7 +1067,8 @@ function drawBarChart(width, height, sent_or_received) {
     .attr("height", function(d) { return height - y(d.value);})
     .attr("width", x.rangeBand())
     .attr("fill", function(d) { return color(d.id);})
-    .text(function(d) { return (d.name + " (" + d.value + ")"); })
+    //.append("title")
+    //.text(function(d) { return (d.name + " (" + d.value + ")"); })
     ;
 
     // exit
