@@ -702,14 +702,12 @@ var d3cola = cola.d3adaptor()
     var links = owl.deepCopy(dataLinksData);
     var nodes = owl.deepCopy(dataNodeData);
 
-    var nglinks = links.slice().filter(filterLinks);
-    var ngnodes = nodes.slice().filter(filterNodesByPlayer);
+    var nglinks = links.slice();//.filter(filterLinks);
+    var ngnodes = nodes.slice();//.filter(filterNodesByPlayer);
 
 
-    nglink = nodeGraph.selectAll(".nglink").data(nglinks, function(d) { return d.id; });
-    ngnode = nodeGraph.selectAll(".ngnode").data(ngnodes, function(d) { return d.id; });
-
-    nglink.exit().remove();
+    var nglink = nodeGraph.selectAll(".nglink").data(nglinks, function(d) { return d.id; });
+    var ngnode = nodeGraph.selectAll(".ngnode").data(ngnodes, function(d) { return d.id; });
 
     nglink
     .enter().append("line")
@@ -717,6 +715,12 @@ var d3cola = cola.d3adaptor()
     .style("stroke", function(d) { return color(d.s); })
     .style("stroke-width",
            function(d) { return Math.sqrt(d.value); });
+
+    nglink.exit()
+    //.style("stroke-width",
+    //      function(d) { return 0; });
+        .remove();
+
 
     ngnode.exit().remove();
 
@@ -747,8 +751,8 @@ var d3cola = cola.d3adaptor()
     });
 
     force
-    .links(nglinks)
     .nodes(ngnodes)
+    .links(nglinks)
     .start()
     ;
 
