@@ -281,7 +281,7 @@ var dataUpdateCallbacks = [];
 
 var dataMatrixSent = [];
 var dataMatrixReceived = [];
-var cnt = 0;
+
 function createDataMatrix() {
   var nodes = owl.deepCopy(dataNodeData);// graph.nodes;
   var links = owl.deepCopy(dataLinksData);//graph.links;
@@ -298,7 +298,6 @@ function createDataMatrix() {
     // d.id = d.s + ( d.t * graph.nodes.length * 10);
     // d.index = d.id;
     d.count = d.value;
-    console.log(nodes[d.t]);
     var msgs = filteredMessages.filter(function(m){
 
       return (
@@ -327,9 +326,6 @@ function createDataMatrix() {
     dataMatrixSent[d.s][d.t] = d.msgs; // sent mail
     dataMatrixReceived[d.t][d.s] = d.msgs; // received mail
   });
-  cnt++;
-  console.log(cnt);
-  console.log(nodes);
 }
 
 function updateDataMatrix() {
@@ -724,9 +720,7 @@ function updatePlayerVisibility() {
   dataUpdateCallbacks.push(updatePlayerListData);
 }
 
-function drawNodeGraph() {
-
-  var width = 400, height = 450;
+function drawNodeGraph(width, height) {
 
   var d3force = d3.layout.force()
   .charge(-280)
@@ -985,10 +979,101 @@ function drawChordGraph(sent_or_received) {
   playerStateCallbacks.push(updateChordData);
 }
 
-function drawBarChart(width, height, send_or_receive) {
+function drawBarChart(width, height, sent_or_received) {
+
+  var srtext = sent_or_received ? "sent" : "received";
+  var chart_container = d3.select("body").append("svg")
+    .attr("class", "bar-chart " + srtext)
+  .style("display", "inline-box")
+    .attr("width", width)
+    .attr("height", height);
+
+  var margin = {top: 20, right: 30, bottom: 30, left: 40},
+      width = width - margin.left - margin.right,
+      height = height - margin.top - margin.bottom;
+
+  var x = d3.scale.ordinal().rangeRoundBands([0, width], 0.1);
+  var y = d3.scale.linear().range([height, 0]);
+
+  var xAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom");
+
+  var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left");
+
+
+
+  var bar_chart = d3.select(".bar-chart." + srtext)
+   .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  var x_axis = bar_chart.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  var y_axis = bar_chart.append("g")
+      .attr("class", "y axis")
+      .call(yAxis);
+
   function updateBarChart() {
-    var nodes = dataNodeData;
+    var nodes = owl.deepCopy(dataNodeData);//.filter(filterNodesByPlayer);
     var links = owl.deepCopy(dataLinksData);//graph.links;
+    var dataMatrix = sent_or_received ? dataMatrixSent : dataMatrixReceived;
+
+    var barData = dataMatrix.map(function(d) {
+      return d.reduce(function(prev, cur, inx, arr) {
+        return prev + cur;
+      }, 0)});
+
+    var indexedBarData = barData.map(
+      function(d, i, a) {
+        var obj = {
+          value: d,
+          name: nodes[i].name,
+          id: nodes[i].id
+        };
+        return obj;
+      });
+
+    x.domain(nodes.map(function(d){ return d.name;}));
+    y.domain([0, d3.max(indexedBarData, function(d){ return d.value;})]);
+
+    x_axis.call(xAxis);
+    y_axis.call(yAxis);
+
+    var dbc = bar_chart.selectAll(".bar").data(indexedBarData);
+
+    // enter
+    dbc.enter().append("rect")
+    .attr("class","bar")
+    .attr("x", function(d) { return x(d.name);})
+    .attr("y", function(d) { return y(d.value);})
+    .attr("height", function(d) { return height - y(d.value);})
+    .attr("width", x.rangeBand())
+    .attr("fill", function(d) { return color(d.id);})
+    .append("title")
+    .text(function(d) { return (d.name + " (" + d.value + ")"); })
+    ;
+
+    // update
+    dbc.transition()
+    .attr("x", function(d) { return x(d.name);})
+    .attr("y", function(d) { return y(d.value);})
+    .attr("height", function(d) { return height - y(d.value);})
+    .attr("width", x.rangeBand())
+    .attr("fill", function(d) { return color(d.id);})
+    .text(function(d) { return (d.name + " (" + d.value + ")"); })
+    ;
+
+    // exit
+    dbc.exit().transition()
+    .attr("y", 0)
+    .attr("height", 0);
 
 
   }
@@ -1006,18 +1091,18 @@ function setupDataDisplays() {
   updateOnSlider.push(updateDataMatrix);
 
   drawPlayerList();
-  drawTimeChart(550, 350);
+  drawTimeChart(550, 250);
   drawTimeline(550, 15);
 
-  //drawChordGraphStatic();
-  //drawNodeGraphWithCurves();
+  drawNodeGraph(400, 350);
 
   drawBarChart(850, 350, true);
-  //drawBarChart(false);
-  //drawNodeGraph();
+  drawBarChart(850, 350, false);
+
   drawChordGraph(true);
   drawChordGraph(false);
-  //drawMessageList();
+
+  drawMessageList();
 }
 
 
