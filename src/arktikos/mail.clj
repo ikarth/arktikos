@@ -89,7 +89,7 @@
 (defn strip-email-square-brackets [address]
   (let [rx (re-find #"\[\S+\]" address)]
     (if rx
-      (subs rx (inc (.indexOf rx "\[")) (.indexOf rx "\]"))
+      (subs rx (inc (.indexOf rx "[")) (.indexOf rx "]"))
       address
       )))
 
@@ -212,14 +212,13 @@
   Remote complement to (ingest-mail)."
   ([] (remote-mail (gmail-folder)))
   ([folder-name]
-   ;(if (string? folder-name)
-     (let []
-      (clojure.pprint/pprint (str "Accessing remote mail: " folder-name))
-      (map process-remote-message
+   (clojure.pprint/pprint (str "Accessing remote mail: " folder-name))
+   (if (vector? folder-name)
+     (mapcat #(remote-mail %1) folder-name)
+     (map process-remote-message
            (clojure-mail.core/with-store (clojure-mail.core/gen-store (gmail-username) (gmail-password))
              (.getMessages (my-open-folder folder-name :readonly))
-                  )))
-     ));)
+                  )))))
 
 ;; Cache the fetched mail, because we really don't need real-time updates yet...
 (def cached-remote-mail
