@@ -279,6 +279,63 @@ var dataTimelineData = [];
 
 var dataUpdateCallbacks = [];
 
+var dataMatrixSent = [];
+var dataMatrixReceived = [];
+var cnt = 0;
+function createDataMatrix() {
+  var nodes = owl.deepCopy(dataNodeData);// graph.nodes;
+  var links = owl.deepCopy(dataLinksData);//graph.links;
+  var messages = dataSortedData;//owl.deepCopy(dataSortedData);// sortData(graph.data);
+  var filteredMessages = messages.filter(filterData);
+
+  nodes.forEach(function(d) {
+    d.id = +d.index;
+  });
+
+  links.forEach(function(d){
+    // d.s = +d.source;
+    // d.t = +d.target;
+    // d.id = d.s + ( d.t * graph.nodes.length * 10);
+    // d.index = d.id;
+    d.count = d.value;
+    console.log(nodes[d.t]);
+    var msgs = filteredMessages.filter(function(m){
+
+      return (
+        (nodes[d.s].playerState == 0) &&
+        (nodes[d.t].playerState == 0) &&
+        (m.senderId == d.s) &&
+        (m.targetIds.some(function(s) { return s == d.t; }))
+      );
+    });
+    d.msgs = msgs.length;
+    //d.count = msgs.length;
+  });
+
+  // Create Matrix
+
+  // Create the basic matrix: all nodes vs. all nodes, with a value of 0.
+  dataMatrixSent = [];
+  dataMatrixReceived = [];
+  nodes.forEach(function(d) {
+    dataMatrixSent.push(nodes.map(function(t) { return 0; }));
+    dataMatrixReceived.push(nodes.map(function(t) { return 0; }));
+  });
+
+  // Fill zero-basis data matrix with values from links
+  links.forEach(function(d) {
+    dataMatrixSent[d.s][d.t] = d.msgs; // sent mail
+    dataMatrixReceived[d.t][d.s] = d.msgs; // received mail
+  });
+  cnt++;
+  console.log(cnt);
+  console.log(nodes);
+}
+
+function updateDataMatrix() {
+  createDataMatrix();
+}
+
 function updateSourceData() {
   d3.json(dataSource, function(error, data) {
     if (error) { alert("Error reading data: ", error.statusText); return; }
@@ -606,6 +663,12 @@ function drawMessageList() {
 }
 
 
+///////////////////////////////////////
+//
+// Player List
+//
+///////////////////////////////////////
+
 function drawPlayerList() {
   //var color = d3.scale.category20();
 
@@ -625,7 +688,7 @@ function updatePlayerVisibility() {
     }).style("background-color", function(d) { return color(d.id); });
   playerList.selectAll("li")
   .html(function(d) {
-      return d.name;// + d.id + d.playerState;
+      return d.name + d.id + d.playerState;
     })
 }
 
@@ -654,9 +717,7 @@ function updatePlayerVisibility() {
     });
 
     updatePlayerVisibility();
-
   }
-
 
   //playerStateCallbacks.push(updatePlayerVisibility);
   playerStateCallbacks.push(updatePlayerListData);
@@ -800,7 +861,6 @@ function drawChordGraph(sent_or_received) {
   var layout = getDefaultLayout();
   var last_layout = getDefaultLayout();
 
-  var graph = [];
   var matrix_initialized = false;
 
   var show_sent_mail = true;
@@ -817,58 +877,11 @@ function drawChordGraph(sent_or_received) {
   }
 
   function updateChords() {
-    // assemble data matrix
-    //if (!matrix_initialized) { return; }
-    var nodes = dataNodeData;//owl.deepCopy(dataNodeData);// graph.nodes;
-    var links = dataLinksData;//owl.deepCopy(dataLinksData);//graph.links;
-    var messages = dataSortedData;//owl.deepCopy(dataSortedData);// sortData(graph.data);
-    var filteredMessages = messages.filter(filterData);
-    var bydates = graph.dates;
 
-    nodes.forEach(function(d) {
-      d.id = +d.index;
-    });
-
-    links.forEach(function(d){
-      // d.s = +d.source;
-      // d.t = +d.target;
-      // d.id = d.s + ( d.t * graph.nodes.length * 10);
-      // d.index = d.id;
-      d.count = d.value;
-      //console.log(d);
-      var msgs = filteredMessages.filter(function(m){
-        return (
-          (nodes[d.s].playerState == 0) &&
-          (nodes[d.t].playerState == 0) &&
-          (m.senderId == d.s) &&
-          (m.targetIds.some(function(s) { return s == d.t; }))
-
-        );
-      });
-      d.msgs = msgs.length;
-      //d.count = msgs.length;
-    });
-
-    // Create Matrix
-
-    // Create the basic matrix: all nodes vs. all nodes, with a value of 0.
-    dataMatrix = [];
-    nodes.forEach(function(d) {
-      dataMatrix.push(nodes.map(function(t) {
-        return 0;
-      }));
-    });
-
-    // Fill zero-basis data matrix with values from links
-    links.forEach(function(d) {
-      if(show_sent_mail) {
-        dataMatrix[d.s][d.t] = d.msgs; // sent mail
-      } else {
-        dataMatrix[d.t][d.s] = d.msgs; // received mail
-      }
-    });
+    var nodes = dataNodeData;// graph.nodes;
 
     // Translate message counts for this time range to values in the matrix
+    var dataMatrix = sent_or_received ? dataMatrixSent : dataMatrixReceived;
 
     // Assign Matrix to layout
     layout = getDefaultLayout();
@@ -972,8 +985,26 @@ function drawChordGraph(sent_or_received) {
   playerStateCallbacks.push(updateChordData);
 }
 
+function drawBarChart(width, height, send_or_receive) {
+  function updateBarChart() {
+    var nodes = dataNodeData;
+    var links = owl.deepCopy(dataLinksData);//graph.links;
+
+
+  }
+
+  dataUpdateCallbacks.push(updateBarChart);
+  updateOnSlider.push(updateBarChart);
+  playerStateCallbacks.push(updateBarChart);
+
+}
+
 
 function setupDataDisplays() {
+  dataUpdateCallbacks.push(updateDataMatrix);
+  playerStateCallbacks.push(updateDataMatrix);
+  updateOnSlider.push(updateDataMatrix);
+
   drawPlayerList();
   drawTimeChart(550, 350);
   drawTimeline(550, 15);
@@ -981,10 +1012,12 @@ function setupDataDisplays() {
   //drawChordGraphStatic();
   //drawNodeGraphWithCurves();
 
-  drawNodeGraph();
+  drawBarChart(850, 350, true);
+  //drawBarChart(false);
+  //drawNodeGraph();
   drawChordGraph(true);
   drawChordGraph(false);
-  drawMessageList();
+  //drawMessageList();
 }
 
 
