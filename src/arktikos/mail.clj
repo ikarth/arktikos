@@ -36,7 +36,7 @@
           (get (my-config) :redactions))))
 
 ;; Cache redactions, so we don't have to keep yanking them from the config files
-(def get-redactions (clojure.core.memoize/ttl get-new-redactions {} :ttl/threshold 10000))
+(def get-redactions (clojure.core.memoize/ttl get-new-redactions {} :ttl/threshold 10))
 
 ;;;
 ;;; Mail Data Formatting
@@ -86,6 +86,13 @@
        (subs rx (inc (.indexOf rx "<")) (.indexOf rx ">"))
          address))))
 
+(defn strip-email-square-brackets [address]
+  (let [rx (re-find #"\[\S+\]" address)]
+    (if rx
+      (subs rx (inc (.indexOf rx "\[")) (.indexOf rx "\]"))
+      address
+      )))
+
 (defn redact-addresses
   "Replace the addresses with aliases (presumably from the config files)."
   [address redactions]
@@ -96,7 +103,7 @@
 (defn strip-emails
   "Strip and redact a bunch of emails."
   [addresses redactions]
-  (map #(redact-addresses (strip-email %1) redactions) addresses))
+  (map #(redact-addresses (strip-email-square-brackets (strip-email %1)) redactions) addresses))
 
 
 (defn hash-message
@@ -205,15 +212,18 @@
   Remote complement to (ingest-mail)."
   ([] (remote-mail (gmail-folder)))
   ([folder-name]
-    (clojure.pprint/pprint (str "Accessing remote mail: " folder-name))
-    (map process-remote-message
-        (clojure-mail.core/with-store (clojure-mail.core/gen-store (gmail-username) (gmail-password))
-         (.getMessages (my-open-folder folder-name :readonly))
-                  ))))
+   ;(if (string? folder-name)
+     (let []
+      (clojure.pprint/pprint (str "Accessing remote mail: " folder-name))
+      (map process-remote-message
+           (clojure-mail.core/with-store (clojure-mail.core/gen-store (gmail-username) (gmail-password))
+             (.getMessages (my-open-folder folder-name :readonly))
+                  )))
+     ));)
 
 ;; Cache the fetched mail, because we really don't need real-time updates yet...
-;(def cached-remote-mail
-;  (clojure.core.memoize/ttl remote-mail {} :ttl/threshold 60))
+(def cached-remote-mail
+  (clojure.core.memoize/ttl remote-mail {} :ttl/threshold 60))
 
 
 ;(remote-mail)
