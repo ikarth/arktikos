@@ -404,6 +404,46 @@ function filterNodesByPlayer(d) {
   return (0 == d.playerState);
 }
 
+///////////////////////////////////
+//
+// Update Button
+//
+//////////////////////////////////
+
+function updateData() {
+  updateSourceData();
+}
+
+function drawUpdateButton() {
+  var button = d3.select("#player-list-box").append("div")
+  .attr("width", "60px")
+  //.attr("height", "20")
+  .style("background-color","blue")
+  .style("color","white")
+  .style("font-weight","bold")
+  .style("text-align","center")
+  .style("padding","6px")
+  .style("border-radius","5px")
+  ;
+
+  button.html("Update");
+
+  button.on("click", function(d) {
+    button.style("color","#ffffff");
+
+    updateData();
+  });
+  button.on("mouseover", function(d) {
+    button
+    .style("background-color","#dddddd")
+    .style("color","blue");
+  });
+  button.on("mouseout", function(d) {
+    button.style("background-color","blue")
+        .style("color","white");
+  });
+}
+
 
 ///////////////////////////////////
 //
@@ -1087,18 +1127,20 @@ function drawBarChart(width, height, sent_or_received) {
 
 
 function setupDataDisplays() {
+  drawUpdateButton();
+
   dataUpdateCallbacks.push(updateDataMatrix);
   playerStateCallbacks.push(updateDataMatrix);
   updateOnSlider.push(updateDataMatrix);
 
   drawPlayerList();
-  drawTimeChart(550, 250);
-  drawTimeline(550, 15);
+  drawTimeChart(600, 250);
+  drawTimeline(600, 15);
 
-  drawNodeGraph(400, 350);
+  drawNodeGraph(600, 550);
 
-  drawBarChart(850, 350, true);
-  drawBarChart(850, 350, false);
+  drawBarChart(450, 350, true);
+  drawBarChart(450, 350, false);
 
   drawChordGraph(true);
   drawChordGraph(false);
@@ -1112,3 +1154,4 @@ function drawGraphs() {
   updateSourceData();
   updateSourceData();
 }
+
