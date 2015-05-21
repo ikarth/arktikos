@@ -15,8 +15,9 @@
 
 (def remote-mail-data (mail/cached-remote-mail))
 
-(defn get-mail-data [source]
-  (cond
+(defn get-mail-data
+  ([source]
+   (cond
         (= source :local)
         (data/broadcast-mail
                (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
@@ -25,6 +26,8 @@
         (data/broadcast-mail
                remote-mail-data
                )))
+  ([source & args]
+   (get-mail-data source)))
 
 
 
@@ -39,6 +42,10 @@
        {:status 200
         :headers {"Content-Type" "application/json"} ; "Access-Control-Allow-Origin" "*"
         :body (get-mail-data :local)})
+  (GET "/update" []
+       {:status 200
+        :headers {"Content-Type" "application/json"}
+        :body (get-mail-data :remote :refresh)})
   (route/files "public")
   ;(route/files "/" (do (println root) {:root root}))
   (route/resources "public")

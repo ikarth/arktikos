@@ -36,7 +36,7 @@
           (get (my-config) :redactions))))
 
 ;; Cache redactions, so we don't have to keep yanking them from the config files
-(def get-redactions (clojure.core.memoize/ttl get-new-redactions {} :ttl/threshold 1000))
+(def get-redactions (clojure.core.memoize/ttl get-new-redactions {} :ttl/threshold 100))
 
 ;;;
 ;;; Mail Data Formatting
@@ -222,7 +222,7 @@
 
 ;; Cache the fetched mail, because we really don't need real-time updates yet...
 (def cached-remote-mail
-  (clojure.core.memoize/ttl remote-mail {} :ttl/threshold 60))
+  (clojure.core.memoize/ttl remote-mail {} :ttl/threshold 61))
 
 
 ;(remote-mail)
