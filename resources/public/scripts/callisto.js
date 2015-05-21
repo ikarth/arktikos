@@ -763,8 +763,8 @@ function updatePlayerVisibility() {
 function drawNodeGraph(width, height) {
 
   var d3force = d3.layout.force()
-  .charge(-280)
-  .linkDistance(80)
+  .charge(-180)
+  .linkDistance(90)
   .size([width, height]);
 
 var d3cola = cola.d3adaptor()
@@ -782,12 +782,15 @@ var d3cola = cola.d3adaptor()
     return d.name;
   });
 
-  var nodeGraph = d3.select("body").append("svg")
+  var nodeGraph = d3.select("#timeline-box").append("svg")
   .attr("width", width)
   .attr("height", height)
   .attr("class","nodegraph");
 
   nodeGraph.call(nodeTip);
+
+  var links = [];
+  var nodes = [];
 
   function updateNodes() {
 
@@ -797,25 +800,29 @@ var d3cola = cola.d3adaptor()
     var links = owl.deepCopy(dataLinksData);
     var nodes = owl.deepCopy(dataNodeData);
 
-    var nglinks = links.slice();//.filter(filterLinks);
-    var ngnodes = nodes.slice();//.filter(filterNodesByPlayer);
+    var nglinks = links.slice().filter(filterLinks);
+    var ngnodes = nodes.slice().filter(filterNodesByPlayer);
 
 
     var nglink = nodeGraph.selectAll(".nglink").data(nglinks, function(d) { return d.id; });
     var ngnode = nodeGraph.selectAll(".ngnode").data(ngnodes, function(d) { return d.id; });
+
+    //force.stop();
 
     nglink
     .enter().append("line")
     .attr("class", "nglink")
     .style("stroke", function(d) { return color(d.s); })
     .style("stroke-width",
-           function(d) { return Math.sqrt(d.value); });
+           function(d) {
+      //return Math.sqrt(d.value);
+      return d.value;
+    });
 
     nglink.exit()
     //.style("stroke-width",
     //      function(d) { return 0; });
         .remove();
-
 
     ngnode.exit().remove();
 
@@ -845,8 +852,11 @@ var d3cola = cola.d3adaptor()
       .attr("cy", function(d) { return d.y; });
     });
 
+    console.log(links);
+    console.log(nglinks);
+
     force
-    .nodes(ngnodes)
+    .nodes(nodes)
     .links(nglinks)
     .start()
     ;
@@ -878,6 +888,19 @@ function drawChordGraph(sent_or_received) {
   .attr("height", height);
   var g = svg.append("g")
   .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+  var chart_title = sent_or_received ? "Letters Sent" : "Letters Received";
+
+  svg.append("text")
+  .attr("text-align", "right")
+  .attr("x", width)
+  .attr("y", 0)
+  .attr("dy", "1em")
+  .attr("text-anchor", "end")
+  .style("font-size", "1.5em")
+  .style("font-weight", "bold")
+  .style("fill", "#aaaaaa")
+  .text(chart_title);
 
   //var dataMatrix = [];
   //var nodes = [];
@@ -1021,12 +1044,30 @@ function drawChordGraph(sent_or_received) {
 
 function drawBarChart(width, height, sent_or_received) {
 
+  var tip = d3.tip().attr("class", "d3-tip")
+  .html(function(d) {
+    return d.name + "<br>" + d.value;
+  });
+
   var srtext = sent_or_received ? "sent" : "received";
   var chart_container = d3.select("body").append("svg")
     .attr("class", "bar-chart " + srtext)
   .style("display", "inline-box")
     .attr("width", width)
     .attr("height", height);
+
+  var chart_title = sent_or_received ? "Letters Sent" : "Letters Received";
+
+  chart_container.append("text")
+  .attr("text-align", "right")
+  .attr("x", width)
+  .attr("y", 0)
+  .attr("dy", "1em")
+  .attr("text-anchor", "end")
+  .style("font-size", "2em")
+  .style("font-weight", "bold")
+  .style("fill", "#aaaaaa")
+  .text(chart_title);
 
   var margin = {top: 20, right: 30, bottom: 30, left: 40},
       width = width - margin.left - margin.right,
@@ -1060,6 +1101,8 @@ function drawBarChart(width, height, sent_or_received) {
       .attr("class", "y axis")
       .call(yAxis);
 
+  bar_chart.call(tip);
+
   function updateBarChart() {
     var nodes = owl.deepCopy(dataNodeData);//.filter(filterNodesByPlayer);
     var links = owl.deepCopy(dataLinksData);//graph.links;
@@ -1086,6 +1129,12 @@ function drawBarChart(width, height, sent_or_received) {
     x_axis.call(xAxis);
     y_axis.call(yAxis);
 
+    x_axis.selectAll("text")
+                .style("text-anchor", "end")
+            .attr("dx", "-.8em")
+            .attr("dy", ".15em")
+    .attr("transform", function(d) { return "rotate(90)"; });
+
     var dbc = bar_chart.selectAll(".bar").data(indexedBarData);
 
     // enter
@@ -1096,8 +1145,10 @@ function drawBarChart(width, height, sent_or_received) {
     .attr("height", function(d) { return height - y(d.value);})
     .attr("width", x.rangeBand())
     .attr("fill", function(d) { return color(d.id);})
-    .append("title")
-    .text(function(d) { return (d.name + " (" + d.value + ")"); })
+    //.append("title")
+    //.text(function(d) { return (d.name + " (" + d.value + ")"); })
+    .on("mouseover", tip.show)
+    .on("mouseout", tip.hide)
     ;
 
     // update
