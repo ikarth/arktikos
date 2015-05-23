@@ -2,7 +2,7 @@
 var dataSource = "/data/remote";
 //var dataSource =  "test.json";
 
-console.log("Starting...");
+console.log(Date.now() + "Starting...");
 
 var tickCount = 0;
 
@@ -11,7 +11,7 @@ var color = d3.scale.category20();
 var parseDate = d3.time.format("%Y-%m-%d-%H-%M-%S").parse,
     formatPercent = d3.format(".0%");
 
-
+var logUpdates = false;
 //
 // Player Toggle Functions
 //
@@ -35,6 +35,9 @@ function togglePlayerState(index) {
   //}
 
   //playerState[index] = (playerState[index] + 1)  % maxPlayerStates;
+  if(logUpdates) { console.log(Date.now() + "*playerStateCallbacks*"); }
+
+
   playerStateCallbacks.forEach(function(f) {
     f();
   });
@@ -126,14 +129,19 @@ var focusArea = [0, 0];
 
 var update_on_slider_count = 0;
 
+function updateSliderData() {
+  if(logUpdates) { console.log(Date.now() + "*updateSliderData*"); }
 
-
-function setFocusArea(extent) {
-  focusArea = [extent[0], extent[1]];
   updateOnSlider.forEach(function(f) {
     f();
   });
   update_on_slider_count++;
+}
+
+function setFocusArea(extent) {
+  if(logUpdates) { console.log(Date.now() + "*setFocusArea*"); }
+  focusArea = [extent[0], extent[1]];
+  updateSliderData();
 }
 
 function getFocusArea() {
@@ -333,6 +341,7 @@ function updateDataMatrix() {
 }
 
 function updateSourceData() {
+  if(logUpdates) { console.log(Date.now() + "*** updateSourceData ***"); }
   d3.json(dataSource, function(error, data) {
     if (error) { alert("Error reading data: ", error.statusText); return; }
 
@@ -527,7 +536,7 @@ function drawTimeline(width, height) {
   }
 
   function updateTimelineData() {
-
+    if(logUpdates) { console.log(Date.now() + "updateTimelineData"); }
     var timeline_data = dataTimelineData.slice();
 
     var timeExtent = [];
@@ -603,6 +612,7 @@ function drawTimeChart(width, height) {
   timechart.call(tip);
 
   function updateTimechartData() {
+    if(logUpdates) { console.log(Date.now() + "updateTimechartData"); }
 
     var data_timechart = dataSortedData.slice();
 
@@ -671,6 +681,7 @@ function drawMessageList() {
       });*/
 
   function updateMessageListings() {
+    if(logUpdates) { console.log(Date.now() + "updateMessageListings"); }
     var filteredData = dataSortedData.slice()
     .filter(filterData)
     .filter(function(d){return 0 == dataNodeData[d.senderId].playerState;});
@@ -729,6 +740,7 @@ function updatePlayerVisibility() {
 }
 
   function updatePlayerListData() {
+    if(logUpdates) { console.log(Date.now() + "updatePlayerListData"); }
 
     var data_players = owl.deepCopy(dataNodeData);
 
@@ -793,6 +805,7 @@ var d3cola = cola.d3adaptor()
   var nodes = [];
 
   function updateNodes() {
+    if(logUpdates) { console.log(Date.now() + "updateNodes"); }
 
     //dataFilteredLinks = dataLinksData.filter(filterLinks);
     //dataFilteredNodes = dataNodeData.filter(filterNodeByPlayer);
@@ -889,6 +902,7 @@ var d3cola = cola.d3adaptor()
   dataUpdateCallbacks.push(updateNodes);
   playerStateCallbacks.push(updateNodes);
   playerStateCallbacks.push(nodeTip.hide);
+  updateOnSlider.push(updateNodes);
 
 }
 
@@ -954,6 +968,7 @@ function drawChordGraph(sent_or_received) {
   }
 
   function updateChords() {
+    if(logUpdates) { console.log(Date.now() + "updateChords"); }
 
     var nodes = dataNodeData;// graph.nodes;
 
@@ -1124,6 +1139,7 @@ function drawBarChart(width, height, sent_or_received) {
   bar_chart.call(tip);
 
   function updateBarChart() {
+    if(logUpdates) { console.log(Date.now() + "updateBarChart"); }
     var nodes = owl.deepCopy(dataNodeData);//.filter(filterNodesByPlayer);
     var links = owl.deepCopy(dataLinksData);//graph.links;
     var dataMatrix = sent_or_received ? dataMatrixSent : dataMatrixReceived;
@@ -1203,6 +1219,9 @@ function setupDataDisplays() {
   dataUpdateCallbacks.push(updateDataMatrix);
   playerStateCallbacks.push(updateDataMatrix);
   updateOnSlider.push(updateDataMatrix);
+  dataUpdateCallbacks.push(updateSliderData);
+  playerStateCallbacks.push(updateSliderData);
+
 
   drawPlayerList();
   drawTimeChart(600, 250);
@@ -1223,6 +1242,6 @@ function setupDataDisplays() {
 function drawGraphs() {
   setupDataDisplays();
   updateSourceData();
-  updateSourceData();
+ // updateSourceData();
 }
 
