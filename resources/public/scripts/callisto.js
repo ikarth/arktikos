@@ -763,8 +763,8 @@ function updatePlayerVisibility() {
 function drawNodeGraph(width, height) {
 
   var d3force = d3.layout.force()
-  .charge(-180)
-  .linkDistance(90)
+  .charge(-80)
+  .linkDistance(140)
   .size([width, height]);
 
 var d3cola = cola.d3adaptor()
@@ -802,6 +802,22 @@ var d3cola = cola.d3adaptor()
 
     var nglinks = links.slice().filter(filterLinks);
     var ngnodes = nodes.slice().filter(filterNodesByPlayer);
+
+    var filter_zero_links = true;
+    if(filter_zero_links) {
+      nglinks = nglinks.filter(function(l) {
+        return ((dataMatrixReceived[l.t][l.s] > 0) || (dataMatrixSent[l.s][l.t] > 0));
+      });
+      ngnodes = ngnodes.filter(function(d) {
+        sum = dataMatrixReceived[d.id].reduce(function(p, c, i, a) {
+          return p + c;
+        }) +
+        dataMatrixSent[d.id].reduce(function(p, c, i, a) {
+          return p + c;
+        });
+        return (sum > 0);
+      });
+    }
 
 
     var nglink = nodeGraph.selectAll(".nglink").data(nglinks, function(d) { return d.id; });
@@ -852,14 +868,18 @@ var d3cola = cola.d3adaptor()
       .attr("cy", function(d) { return d.y; });
     });
 
-    console.log(links);
-    console.log(nglinks);
+    //console.log(links);
+    //console.log(nglinks);
 
     force
     .nodes(nodes)
-    .links(nglinks)
-    .start()
-    ;
+    .links(nglinks);
+
+    //force.linkStrength(function(l){
+    //  return 1;// l.value;
+    //});
+
+    force.start();//(10,15,20);
 
     //console.log(dataNodeData);
     //console.log(ngnodes);
