@@ -37,8 +37,10 @@ A lot of stuff:
 * Clean up configuration files so you don't have to read the setup code.
 * Clean up the frontend display:
   * Improve the UI
-  * Move JSON data updates to unified function that all the graphs can share
-  * Add more graphs and data displays
+  * Add more graphs and data displays:
+    * Matrix of communication pairs
+    * Sent/received ratio chart
+    * incoming & outgoing connection chart
 * Better distribution, in a downloadable package
 
 ## License

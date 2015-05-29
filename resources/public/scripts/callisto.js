@@ -1165,11 +1165,11 @@ function drawBarChart(width, height, sent_or_received) {
     x_axis.call(xAxis);
     y_axis.call(yAxis);
 
-    x_axis.selectAll("text")
-                .style("text-anchor", "end")
-            .attr("dx", "-.8em")
-            .attr("dy", ".15em")
-    .attr("transform", function(d) { return "rotate(90)"; });
+ //   x_axis.selectAll("text")
+ //               .style("text-anchor", "end")
+//            .attr("dx", "-.8em")
+ //           .attr("dy", ".15em")
+ //   .attr("transform", function(d) { return "rotate(90)"; });
 
     var dbc = bar_chart.selectAll(".bar").data(indexedBarData);
 
@@ -1212,6 +1212,185 @@ function drawBarChart(width, height, sent_or_received) {
 
 }
 
+function drawScatterplot(width, height) {
+
+  var tip = d3.tip().attr("class", "d3-tip")
+  .html(function(d) {
+    return d.name + "<br>" + d.sent + "<br>" + d.received;
+  });
+
+  var chart_container = d3.select("body").append("svg")
+    .attr("class", "scatterplot")
+    .style("display", "inline-box")
+    .attr("width", width)
+    .attr("height", height);
+
+  var chart_title = "In/Out Ratio";
+
+  chart_container.append("text")
+  .attr("text-align", "right")
+  .attr("x", width)
+  .attr("y", 0)
+  .attr("dy", "1em")
+  .attr("text-anchor", "end")
+  .style("font-size", "2em")
+  .style("font-weight", "bold")
+  .style("fill", "#aaaaaa")
+  .text(chart_title);
+
+  var margin = {top: 20, right: 30, bottom: 30, left: 40},
+      width = width - margin.left - margin.right,
+      height = height - margin.top - margin.bottom;
+
+  var x = d3.scale.linear().range([0, width]);
+  var y = d3.scale.linear().range([height, 0]);
+
+  var xAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom");
+
+  var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left");
+
+  var scatterplot = d3.select(".scatterplot")
+   .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  var x_axis = scatterplot.append("g")
+    .attr("class", "x axis")
+    .attr("transform", "translate(0," + height + ")")
+    .call(xAxis);
+
+
+   x_axis.append("text")
+    .attr("class", "label")
+    .style("text-anchor", "end")
+    .attr("x", width)
+    .attr("y", -6)
+    .text("messages sent")
+  ;
+
+  var y_axis = scatterplot.append("g")
+      .attr("class", "y axis")
+      .call(yAxis);
+  y_axis.append("text")
+    .attr("class", "label")
+    .attr("transform", "rotate(-90)")
+    .style("text-anchor", "end")
+      .attr("dy", ".71em")
+    .attr("y", 6)
+    .text("messages received");
+
+  scatterplot.call(tip);
+
+  var balanceline = scatterplot.append("line")
+  .attr("x1", x(0))
+  .attr("y1", y(0))
+  .attr("x2", x(1))
+  .attr("y2", y(1))
+  .attr("stroke-width", 1)
+  .attr("stroke", "#d0d0d0")
+  .attr("class", "balanceline")
+  ;
+
+  function updateScatterplot() {
+      if(logUpdates) { console.log(Date.now() + "updateScatterplot"); }
+      var nodes = owl.deepCopy(dataNodeData);//.filter(filterNodesByPlayer);
+      var links = owl.deepCopy(dataLinksData);//graph.links;
+      var data_sent = dataMatrixSent;
+      var data_received = dataMatrixReceived;
+
+    var sData = data_sent.map(function(d) {
+      return d.reduce(function(prev, cur, inx, arr) {
+        return prev + cur;
+      }, 0)});
+    var rData = data_received.map(function(d) {
+      return d.reduce(function(prev, cur, inx, arr) {
+        return prev + cur;
+      }, 0)});
+
+    var indexed_data = sData.map(function(d, i, a) {
+      var obj = {
+        sent: d,
+        received: rData[i],
+        name: nodes[i].name,
+        id: nodes[i].id
+      };
+      return obj;
+    });
+
+    //console.log(indexed_data);
+
+
+    x.domain([0, d3.max(indexed_data, function(d) {return d.sent;})]);
+    y.domain([0, d3.max(indexed_data, function(d) {return d.received;})]);
+
+    var dim_line = d3.min([d3.max(indexed_data, function(d) {return d.received;}), d3.max(indexed_data, function(d) {return d.sent;})]);
+    console.log(dim_line);
+
+    x_axis.call(xAxis);
+    y_axis.call(yAxis);
+
+    var indexed_data2 = indexed_data.map(function(d) {
+        var obj = {
+        sent: d.sent,
+        received: d.received,
+        name: d.name,
+        id: d.id,
+        xval: x(d.sent),
+        yval: y(d.received)
+      };
+      return obj;
+    });
+
+
+
+
+    var data_points = scatterplot.selectAll(".datapoint").data(indexed_data2, function(d) {return d.id;});
+
+    data_points.enter()
+    .append("circle")
+    .attr("class", "datapoint")
+    .attr("r", 6)
+    .attr("cx", function(d) { return d.xval; })
+    .attr("cy", function(d) { return d.yval; })
+    .attr("fill", function(d) { return color(d.id);})
+    .on("mouseover", tip.show)
+    .on("mouseout", tip.hide)
+    ;
+
+    data_points.transition()
+    .attr("r", 6)
+    .attr("cx", function(d) { return d.xval; })
+    .attr("cy", function(d) { return d.yval; })
+    ;
+
+    data_points.exit().transition().attr("r", 0);
+
+    scatterplot.selectAll(".balanceline")
+    .transition()
+    .attr("x1", x(0))
+    .attr("y1", y(0))
+    .attr("x2", x(dim_line))
+    .attr("y2", y(dim_line));
+
+
+
+
+  }
+
+  dataUpdateCallbacks.push(updateScatterplot);
+  updateOnSlider.push(updateScatterplot);
+  playerStateCallbacks.push(updateScatterplot);
+
+
+
+}
+
+
 
 function setupDataDisplays() {
   drawUpdateButton();
@@ -1228,6 +1407,8 @@ function setupDataDisplays() {
   drawTimeline(600, 15);
 
   drawNodeGraph(600, 550);
+
+  drawScatterplot(600, 550);
 
   drawBarChart(450, 350, true);
   drawBarChart(450, 350, false);
