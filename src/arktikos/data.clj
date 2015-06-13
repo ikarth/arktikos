@@ -168,14 +168,14 @@
   [msgs indexed-nodes]
   (map (fn [msg] {:messageId (hash (:mail/id msg))
                   :date (:mail/date-sent msg)
-                :from (:mail/from msg)
-                :to (:mail/reception-list msg)
-                :subject (:mail/subject msg)
-                :senderId (get indexed-nodes (:mail/from msg) 0)
-                :targetIds (map #(get indexed-nodes %1 0) (:mail/reception-list msg))
+                  :from (:mail/from msg)
+                  :to (:mail/reception-list msg)
+                  :subject (:mail/subject msg)
+                  :senderId (get indexed-nodes (:mail/from msg) 0)
+                  :targetIds (map #(get indexed-nodes %1 0) (:mail/reception-list msg))
+                  :content (:mail/html-body msg)
                   })
-     msgs)
-  )
+     msgs))
 
 ;;;
 ;;; Encoding and JSON

@@ -2,6 +2,7 @@
   (:require [clojure-mail.core :as clj-mail]
             [clojure-mail.message :as message]
             [clojure-mail.folder :as folder]
+            [clojure-mail.parser :as parser]
             [nomad :refer [defconfig]]
             [clojure.java.io :as io]
             [clojure.string]
@@ -36,7 +37,10 @@
           (get (my-config) :redactions))))
 
 ;; Cache redactions, so we don't have to keep yanking them from the config files
-(def get-redactions (clojure.core.memoize/ttl get-new-redactions {} :ttl/threshold 100))
+;(def get-redactions (clojure.core.memoize/ttl get-new-redactions {} :ttl/threshold 10))
+
+(def get-redactions get-new-redactions)
+
 
 ;;;
 ;;; Mail Data Formatting
@@ -120,9 +124,10 @@
    ;:mail/date-received (get-recieved-date m)
    ;:mail/flags (message/flags m)
    ;:mail/mime-type (message/mime-type m)
-   ;:mail/content-type (message/content-type m)
-   ;:mail/text-body (get-text-body m)
-   ;:mail/html-body (get-html-body m)
+   :mail/content-type (message/content-type m)
+   :mail/text-body (get-text-body m)
+   :mail/html-body (get-html-body m)
+   ;:mail/parsed-body (parser/html->text (get-html-body m))
    :mail/reception-list ;(strip-moderator
                          (strip-emails
                           (flatten (conj (cc-list m) (bcc-list m) (message/to m)))
@@ -222,7 +227,7 @@
 
 ;; Cache the fetched mail, because we really don't need real-time updates yet...
 (def cached-remote-mail
-  (clojure.core.memoize/ttl remote-mail {} :ttl/threshold 61))
+  (clojure.core.memoize/ttl remote-mail {} :ttl/threshold 15))
 
 
 ;(remote-mail)
