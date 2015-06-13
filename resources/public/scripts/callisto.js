@@ -433,6 +433,7 @@ function drawUpdateButton() {
   .style("text-align","center")
   .style("padding","6px")
   .style("border-radius","5px")
+  .attr("class", "interface-button")
   ;
 
   button.html("Update");
@@ -1165,11 +1166,11 @@ function drawBarChart(width, height, sent_or_received) {
     x_axis.call(xAxis);
     y_axis.call(yAxis);
 
- //   x_axis.selectAll("text")
- //               .style("text-anchor", "end")
-//            .attr("dx", "-.8em")
- //           .attr("dy", ".15em")
- //   .attr("transform", function(d) { return "rotate(90)"; });
+    x_axis.selectAll("text")
+                .style("text-anchor", "end")
+            .attr("dx", "-.8em")
+            .attr("dy", ".15em")
+    .attr("transform", function(d) { return "rotate(90)"; });
 
     var dbc = bar_chart.selectAll(".bar").data(indexedBarData);
 

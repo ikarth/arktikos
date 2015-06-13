@@ -66,6 +66,10 @@ div.data-list {
 
 }
 
+.interface-button {
+  cursor:pointer;
+}
+
 ul.data-list {
   padding:0px;
   overflow: visible;
@@ -84,6 +88,7 @@ ul.data-list li {
   vertical-align:middle;
   border-radius: 0.5em;
   font-size:small;
+  cursor:pointer;
 }
 
 ul.data-list li:hover {
