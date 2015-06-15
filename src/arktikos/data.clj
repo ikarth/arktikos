@@ -127,10 +127,10 @@
      days ;(map clj-time.coerce/to-date days)
      (map (fn [d] (edge-weights-drop-zero edges (subset-mail-by-date msgs d))) days))))
 
-(edge-weights-per-date
- (mapcat edges-from-mail (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/"))
- (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
-      )
+;(edge-weights-per-date
+; (mapcat edges-from-mail (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/"))
+; (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
+;      )
 
 ;(let [msgs (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
 ;      edges (mail-to-edges msgs)]
@@ -173,7 +173,7 @@
                   :subject (:mail/subject msg)
                   :senderId (get indexed-nodes (:mail/from msg) 0)
                   :targetIds (map #(get indexed-nodes %1 0) (:mail/reception-list msg))
-                  :content (:mail/html-body msg)
+                  ;:content (:mail/html-body msg)
                   })
      msgs))
 
@@ -264,16 +264,16 @@
 ;(nodes-from-mail (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
 ;                 )
 
-(encode-mail-per-date (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
-                      (nodes-from-mail (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/"))
-                      )
+;(encode-mail-per-date (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
+;                      (nodes-from-mail (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/"))
+;                      )
 
-(json/generate-string
- (encode-mail-per-date (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
-                      (nodes-from-mail (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/"))
-                      )
-  {:pretty true :escape-non-ascii true :date-format "yyyy-MM-dd-HH-mm-ss"}
- )
+;(json/generate-string
+; (encode-mail-per-date (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/")
+;                      (nodes-from-mail (mail/ingest-mail "resources/mail/Book One_20150404-0926/messages/"))
+;                      )
+;  {:pretty true :escape-non-ascii true :date-format "yyyy-MM-dd-HH-mm-ss"}
+; )
 
 ;(json/generate-string
 ; (map

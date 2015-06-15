@@ -124,9 +124,9 @@
    ;:mail/date-received (get-recieved-date m)
    ;:mail/flags (message/flags m)
    ;:mail/mime-type (message/mime-type m)
-   :mail/content-type (message/content-type m)
-   :mail/text-body (get-text-body m)
-   :mail/html-body (get-html-body m)
+   ;:mail/content-type (message/content-type m)
+   ;:mail/text-body (get-text-body m)
+   ;:mail/html-body (get-html-body m)
    ;:mail/parsed-body (parser/html->text (get-html-body m))
    :mail/reception-list ;(strip-moderator
                          (strip-emails
