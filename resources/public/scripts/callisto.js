@@ -1416,6 +1416,232 @@ function drawScatterplot(width, height) {
 
 }
 
+function drawMatrixGraph(sent_or_received) {
+  var margin = {top: 200, right: 10, bottom: 10, left: 200},
+    width = 512,
+    height = 512;
+
+  var tip = d3.tip().attr("class", "d3-tip")
+  .html(function(d) {
+    return "&nbsp; " + d.t + " / " + d.s + "&nbsp;";//.name + "<br>" + d.sent + "<br>" + d.received;
+  });
+
+  var sort_nodes_by = 1;
+
+  var show_sent = true,
+      show_rec = true;
+
+  var x = d3.scale.ordinal().rangeBands([0, width]),
+    z = d3.scale.linear().domain([0, 4]).clamp(true);
+    //c = d3.scale.category10().domain(d3.range(10));
+
+  var messages_scale = d3.scale.linear().domain([0, 5]).clamp(true);
+
+  var graph_svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .attr("class", "matrix-graph")
+    .style("margin-left", 0 + "px")
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  graph_svg.append("rect")
+      .attr("class", "matrix-background")
+      .attr("width", width)
+      .attr("height", height);
+
+  graph_svg.call(tip);
+
+  function updateMatrixGraph() {
+    if(logUpdates) { console.log(Date.now() + "updateMatrixGraph"); }
+    var nodes = owl.deepCopy(dataNodeData).filter(filterNodesByPlayer);
+    var links = owl.deepCopy(dataLinksData);//graph.links;
+    var data_sent = dataMatrixSent;
+    var data_received = dataMatrixReceived;
+
+    switch(sort_nodes_by) {
+      case 1: // by messages sent
+        nodes = nodes.sort(function(a, b) {
+          var a_count = data_sent[a.id].reduce(function(pv, cv, ix, ar) { return pv + cv; });
+          var b_count = data_sent[b.id].reduce(function(pv, cv, ix, ar) { return pv + cv; });
+          return (a_count < b_count) ? 1 : ((a_count > b_count) ? -1 : 0);
+        });
+        break;
+      case 2: // by messages received
+        nodes = nodes.sort(function(a, b) {
+          var a_count = data_received[a.id].reduce(function(pv, cv, ix, ar) { return pv + cv; });
+          var b_count = data_received[b.id].reduce(function(pv, cv, ix, ar) { return pv + cv; });
+          return (a_count < b_count) ? 1 : ((a_count > b_count) ? -1 : 0);
+        });
+        break;
+      default:
+        break;
+    }
+
+
+    // adjecency matrix
+    //var graph_matrix = data_sent;
+
+    //nodes.forEach(function(node, i) {
+    //  graph_matrix[i] = d3.range(nodes.length).map(function(j) { return {x: j, y: i, z: 0}; });
+    //})
+
+    //console.log(graph_matrix);
+
+    var rows = [];
+    nodes.forEach(function(d, i) {
+      rows[i] = d.id;
+    });
+    var reverse_rows = [];
+    rows.forEach(function(d, i) {
+      reverse_rows[d] = i;
+    })
+
+    var row_height = d3.scale.ordinal();
+    row_height.domain(rows);
+    row_height.rangeBands([0, width]);
+
+    var row = graph_svg.selectAll(".row")
+      .data(nodes, function(d) {return d.id});
+
+    function update_row(r) {
+      //console.log(r);
+      //console.log(graph_matrix);
+
+      row_height.domain(rows);
+      row_height.rangeBands([0, width]);
+
+      var merged_data = [];//data_sent[r.id];
+
+      data_sent.forEach(function(d, i) {
+        var nd = {};
+        nd.s = data_sent[r.id][i];
+        nd.t = data_received[r.id][i];
+        merged_data.push(nd);
+      });
+
+      /*
+      data_sent[r.id].forEach(function(d) {
+        merged_data[].s = data_sent[r.id];
+      });
+      data_received[r.id].forEach(function(d) {
+        merged_data[].t = data_received[r.id];
+      });*/
+
+      var cell = d3.select(this).selectAll(".cell-sent")
+        .data(merged_data);
+
+      cell.enter().append("rect")
+        .attr("class", "cell-sent")
+        .attr("width", row_height.rangeBand())
+        .attr("height", row_height.rangeBand())
+        .attr("x", function(d, i) { return row_height(i); })
+        .attr("y", function(d) { return 0; })
+        //.style("fill-opacity", function(d) { return show_sent ? (messages_scale(d.s) / 2) : 0; })
+        .style("fill", "rgb(255,0,0)")
+        .on("mouseover", tip.show)
+        .on("mouseout", tip.hide);
+
+      cell.transition()
+        .attr("width", row_height.rangeBand())
+        .attr("height", row_height.rangeBand())
+        .attr("x", function(d, i) { return row_height(i); })
+        .attr("y", function(d) { return 0; })
+        .style("fill-opacity", function(d) { return show_sent ? ((messages_scale(d.s) + messages_scale(d.t)) / 2) : 0; })
+        .style("fill", function(d) { return "rgb(" + (messages_scale(d.s) * 255) + ",0," + (messages_scale(d.t) * 255) + ")"; });
+        //.style("fill", color(function(d, i) { return i; }));
+
+      cell.exit().transition().remove();
+      /*
+      var cell_rec = d3.select(this).selectAll(".cell-rec")
+        .data(data_received[r.id]);
+
+      cell_rec.enter().append("rect")
+        .attr("class", "cell-rec")
+        .attr("x", function(d, i) { return row_height(i); })
+        .attr("y", function(d) { return 0; })
+        .attr("width", row_height.rangeBand())
+        .attr("height", row_height.rangeBand())
+        .style("fill-opacity", function(d) { return show_rec ? (messages_scale(d) / 2) : 0; })
+        .style("fill", "rgb(0,0,255)")
+        .on("mouseover", tip.show)
+        .on("mouseout", tip.hide);
+
+      cell_rec.transition()
+        .attr("x", function(d, i) { return row_height(i); })
+        .attr("y", function(d) { return 0; })
+        .attr("width", row_height.rangeBand())
+        .attr("height", row_height.rangeBand())
+        .style("fill-opacity", function(d) { return show_rec ? (messages_scale(d) / 2) : 0; })
+        .style("fill", "rgb(0,0,255)");
+        //.style("fill", color(function(d, i) { return i; }));
+
+      cell_rec.exit().remove();
+      */
+    }
+
+    var row_enter = row.enter().append("g")
+      .attr("class", "row")
+      .attr("id", function(d) { return d.name; })
+      .attr("transform", function(d) {
+        //console.log(row_height(3));
+        //console.log(d.id);
+        return "translate(0," + row_height(d.id) + ")";
+      })
+      .each(update_row);
+
+    row_enter.append("line")
+      .attr("x2", width);
+
+    row_enter.append("text")
+      .attr("x", -6)
+      .attr("y", 20)
+      .attr("dy", ".32em")
+      .attr("text-anchor", "end")
+      .text(function(d, i) { return nodes[i].name; });
+
+      //.text(function(d, i) { return (typeof nodes[d.id] == "undefined") ? 0 : nodes[d.id].name; });
+
+    row.transition()
+      .attr("transform", function(d) { return "translate(0," + row_height(d.id) + ")"; })
+      .each(update_row);
+
+    row.exit().remove();
+
+    var column = graph_svg.selectAll(".column")
+        .data(nodes, function(d) {return d.id});
+
+    var column_enter = column.enter().append("g")
+      .attr("class", "column")
+      .attr("transform", function(d) { return "translate("+ row_height(d.id) +")rotate(-90)";});
+
+    column_enter.append("line")
+      .attr("x2", -width);
+
+    column_enter.append("text")
+      .attr("x", 6)
+      .attr("y", row_height.rangeBand() / 2)
+      .attr("dy", ".32em")
+      .attr("text-anchor", "start")
+      .text(function(d, i) { return nodes[i].name; });
+
+    //column.selectAll("text")
+    //.text(function(d, i) { return (typeof nodes[d.id] == "undefined") ? 0 : nodes[d.id].name; });
+
+    column.transition()
+    .attr("transform", function(d) { return "translate("+ row_height(d.id) +")rotate(-90)";});
+
+    column.selectAll("text").transition().attr("y", row_height.rangeBand() / 2);
+
+    column.exit().remove();
+
+  }
+
+  dataUpdateCallbacks.push(updateMatrixGraph);
+  updateOnSlider.push(updateMatrixGraph);
+  playerStateCallbacks.push(updateMatrixGraph);
+
+}
 
 
 function setupDataDisplays() {
@@ -1434,7 +1660,10 @@ function setupDataDisplays() {
 
   drawNodeGraph(600, 550);
 
+  drawMatrixGraph(true);
+
   drawScatterplot(600, 550);
+
 
   drawBarChart(450, 350, true);
   drawBarChart(450, 350, false);

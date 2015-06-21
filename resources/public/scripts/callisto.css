@@ -131,3 +131,18 @@ path.chord {
   stroke: #000;
   shape-rendering: crispEdges;
 }
+
+/* Matrix Graph */
+
+.matrix-graph {
+  font-size: smaller;
+}
+
+.matrix-graph line {
+  stroke: #fff;
+  z-index: 10;
+}
+
+.matrix-background {
+  fill: #eee;
+}
