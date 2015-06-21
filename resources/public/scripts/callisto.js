@@ -839,20 +839,44 @@ var d3cola = cola.d3adaptor()
 
     //force.stop();
 
-    nglink
-    .enter().append("line")
+    nodeGraph.append("svg:defs").selectAll("marker")
+    .data(nglinks, function(d) { return d.id; })
+    .enter().append("svg:marker")
+    .attr("id", "arrowend")
+    //.attr("id", (function(d) { return "arrowend" + d.id; }))
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", 28)
+    .attr("refY", 0)
+    .attr("markerWidth", 6)
+    .attr("markerHeight", 6)
+    .attr("markerUnits", "userSpaceOnUse")
+    .attr("orient", "auto")
+    .append("svg:path")
+    .attr("d", "M0,-5L10,0L0,5");
+
+    nglink.enter().append("line")
     .attr("class", "nglink")
     .style("stroke", function(d) { return color(d.s); })
     .style("stroke-width",
            function(d) {
       //return Math.sqrt(d.value);
       return d.value;
-    });
+    })
+    //.attr("marker-end", function(l) { return "url(#arrowend"+ l.id + ")"; })
+    .attr("marker-end", "url(#arrowend)")
+    ;
+
+
+
 
     nglink.exit()
     //.style("stroke-width",
     //      function(d) { return 0; });
         .remove();
+
+
+
+
 
     ngnode.exit().remove();
 
@@ -871,6 +895,7 @@ var d3cola = cola.d3adaptor()
     .on("mouseout", nodeTip.hide)
     //.on("click", function(d){ togglePlayerState(d.index)})
     ;
+
 
     force.on("tick", function () {
       nglink.attr("x1", function(d) { return d.source.x; })
@@ -1330,7 +1355,7 @@ function drawScatterplot(width, height) {
     y.domain([0, d3.max(indexed_data, function(d) {return d.received;})]);
 
     var dim_line = d3.min([d3.max(indexed_data, function(d) {return d.received;}), d3.max(indexed_data, function(d) {return d.sent;})]);
-    console.log(dim_line);
+    //console.log(dim_line);
 
     x_axis.call(xAxis);
     y_axis.call(yAxis);
