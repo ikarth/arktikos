@@ -6,7 +6,27 @@ console.log(Date.now() + "Starting...");
 
 var tickCount = 0;
 
-var color = d3.scale.category20();
+//var color = d3.scale.category20();
+
+
+var color = d3.scale.ordinal().range(["#EAFE67",
+"#9465CC",
+"#F54E5C",
+"#08FCB9",
+"#DBD5EF",
+"#6E493F",
+"#0A8F2A",
+"#FF49B0",
+"#54A7FE",
+"#8E4100",
+"#4052D1",
+"#C13491",
+"#AC043A",
+"#F79387",
+"#9ADD0A",
+"#e4bb23",
+"#083D69",
+"#C496EB"]);
 
 var parseDate = d3.time.format("%Y-%m-%d-%H-%M-%S").parse,
     formatPercent = d3.format(".0%");
