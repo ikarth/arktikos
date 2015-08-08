@@ -474,6 +474,35 @@ function drawUpdateButton() {
   });
 }
 
+function drawColorPaletteButton() {
+  var button = d3.select("#player-list-box").append("div")
+  .attr("width", "60px")
+  .style("background-color",(color_palette ? "blue" : "red"))
+  .style("color","white")
+  .style("font-weight","bold")
+  .style("text-align","center")
+  .style("padding","6px")
+  .style("border-radius","5px")
+  .attr("class", "interface-button");
+
+  button.html("Palette");
+  button.on("click", function(d) {
+    button.style("color","#ffffff");
+
+    swapColorPalette();
+  });
+  button.on("mouseover", function(d) {
+    button
+    .style("background-color","#dddddd")
+    .style("color","blue");
+  });
+  button.on("mouseout", function(d) {
+    button.style("background-color","blue")
+        .style("color","white");
+  });
+
+}
+
 
 ///////////////////////////////////
 //
