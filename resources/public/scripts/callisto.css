@@ -116,7 +116,25 @@ path.chord {
 
 .timeline .brush {
   background-color: #dd0000;
+  /*opacity: 0.43;*/
+}
+
+.timeline .brush rect {
+  background-color: #dd0000;
   opacity: 0.13;
+}
+
+.resize rect {
+  visibility: visible;
+}
+
+.resize path {
+  fill: #DDD;
+
+  stroke: #000;
+  stroke-width: 1.5px;
+  visibility: visible;
+  opacity: 0.9;
 }
 
 /* Bar Chart */
@@ -144,5 +162,5 @@ path.chord {
 }
 
 .matrix-background {
-  fill: #eee;
+  fill: #e9e9e9;
 }

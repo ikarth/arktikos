@@ -525,8 +525,12 @@ function drawTimeline(width, height) {
   .attr("height", height)
   .attr("class", "timeline");
 
-  var brush = d3.svg.brush()
-  ;
+  var arc = d3.svg.arc()
+    .outerRadius(height / 2)
+    .startAngle(0)
+    .endAngle(function(d, i) { return i ? Math.PI : -Math.PI; });
+
+  var brush = d3.svg.brush();
 
   var gTick = timechart.append("g")
   .attr("class", "tick-group");
@@ -534,9 +538,13 @@ function drawTimeline(width, height) {
   var gBrush = timechart.append("g")
   .attr("class", "brush");
 
+  gBrush.selectAll(".resize").append("path")
+    .attr("transform", "translate(0," +  height / 2 + ")")
+    .attr("d", arc);
 
   gBrush.selectAll("rect")
   .attr("height", height);
+
 
   function brushed() {
     var extent0 = brush.extent(),
@@ -580,8 +588,13 @@ function drawTimeline(width, height) {
 
     gBrush.call(brush);
 
-    gBrush.selectAll("rect")
-    .attr("height", height);
+    gBrush.selectAll(".resize").append("path")
+      //.attr("r", height / 2)
+      .attr("transform", "translate(0," +  height / 2 + ")")
+      .attr("d", arc);
+
+  gBrush.selectAll("rect")
+  .attr("height", height);
 
   }
 
@@ -1705,7 +1718,7 @@ function setupDataDisplays() {
 
   drawPlayerList();
   drawTimeChart(600, 250);
-  drawTimeline(600, 15);
+  drawTimeline(600, 30);
 
   drawNodeGraph(600, 550);
 
